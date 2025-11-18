@@ -1,70 +1,176 @@
-# Getting Started with Create React App
+# NBA Bet 2026 - Tracker
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A React app to track your NBA fantasy league standings throughout the 2025-26 season.
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- **Auto-updating NBA Standings**: Fetches live standings from ESPN API (updates every hour)
+- **Manual Vegas Odds**: Easily update projected win totals
+- **Historic Tracking**: Track weekly progress throughout the season
+- **Interactive Charts**: Visualize season trajectory and performance
+- **Responsive Design**: Works on desktop and mobile
 
-### `npm start`
+## Getting Started
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+```bash
+npm install
+npm start
+```
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+The app will open at [http://localhost:3000](http://localhost:3000)
 
-### `npm test`
+## How to Update Data
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### 1. NBA Standings (Auto-Updated)
 
-### `npm run build`
+NBA standings are **automatically fetched** from the ESPN API when you:
+- First load the app
+- Click the "Refresh" button in the header
+- After 1 hour (cached data expires)
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+If the API is unavailable, it will use fallback data from `src/data.js`.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### 2. Vegas Win Total Projections (Manual)
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Edit `src/data.js` and update the `VEGAS_PROJECTIONS` object:
 
-### `npm run eject`
+```javascript
+export const VEGAS_PROJECTIONS = {
+  "thunder": 63.5,    // Update these numbers
+  "cavaliers": 55.5,  // from FanDuel, Covers, etc.
+  "nuggets": 53.5,
+  // ... rest of teams
+};
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+**Where to get Vegas odds:**
+- [FanDuel Sportsbook](https://sportsbook.fanduel.com/nba-futures)
+- [Covers.com](https://www.covers.com/sport/basketball/nba/odds)
+- [BetMGM](https://sports.betmgm.com/en/sports/basketball-7)
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### 3. Historic Weekly Standings (MANUAL TRACKING REQUIRED)
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+**Important**: You must manually add new entries to `HISTORIC_STANDINGS` in `src/data.js` each week to track progress.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+> **Note**: The ESPN API doesn't provide historic standings data, so you need to record the current scores weekly.
 
-## Learn More
+```javascript
+export const HISTORIC_STANDINGS = [
+  {
+    date: '2025-11-01',
+    week: 'Week 1',
+    standings: { Chris: 95, Ian: 88, Karan: 102 }
+  },
+  {
+    date: '2025-11-08',
+    week: 'Week 2',
+    standings: { Chris: 97, Ian: 90, Karan: 105 }
+  },
+  // Add new weeks here!
+  {
+    date: '2025-11-15',  // Current date
+    week: 'Week 3',      // Increment week number
+    standings: {
+      Chris: 99,   // Calculate from current standings
+      Ian: 92,
+      Karan: 107
+    }
+  },
+];
+```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+**How to calculate weekly standings:**
+1. Click "Refresh" to get latest NBA standings
+2. Note down each player's current points from the scoreboard
+3. Add a new entry to `HISTORIC_STANDINGS` with:
+   - Current date
+   - Week number
+   - Each player's current points
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## Data Flow
 
-### Code Splitting
+```
+┌─────────────────────────────────────────────────────┐
+│                   NBA BET 2026                      │
+├─────────────────────────────────────────────────────┤
+│                                                     │
+│  Live NBA Standings (ESPN API)                     │
+│  ↓ Auto-fetched every hour                        │
+│  ↓ Cached in browser                              │
+│  ↓                                                 │
+│  Calculate Current Points                          │
+│  ↓                                                 │
+│  Compare with:                                     │
+│  • Vegas Projections (manual in data.js)          │
+│  • Historic Data (manual weekly updates)          │
+│  ↓                                                 │
+│  Display Charts & Rankings                         │
+│                                                     │
+└─────────────────────────────────────────────────────┘
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## Scoring System
 
-### Analyzing the Bundle Size
+- **1st seed in conference**: 15 points
+- **2nd seed**: 14 points
+- **3rd seed**: 13 points
+- ...
+- **15th seed**: 1 point
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+Each player drafts 10 teams (5 from each conference). Points are calculated based on current conference standings.
 
-### Making a Progressive Web App
+## Troubleshooting
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+### Standings not updating?
 
-### Advanced Configuration
+1. Click the "Refresh" button in the header
+2. Check browser console for API errors
+3. If ESPN API is down, update `FALLBACK_STANDINGS` in `src/data.js` manually
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+### Vegas projections seem wrong?
 
-### Deployment
+Update the `VEGAS_PROJECTIONS` object in `src/data.js` with the latest odds from sportsbooks.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+### Historic chart shows simulated data?
 
-### `npm run build` fails to minify
+Add real weekly data to the `HISTORIC_STANDINGS` array in `src/data.js`. The chart will automatically switch from simulated to real data once you have entries.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## File Structure
+
+```
+src/
+├── App.js           # Main React component
+├── api.js           # ESPN API integration
+├── data.js          # ⭐ Edit this file for manual updates
+├── index.css        # Tailwind styles
+└── index.js         # App entry point
+```
+
+## Weekly Maintenance Checklist
+
+- [ ] Click "Refresh" to get latest standings
+- [ ] Record current points for each player
+- [ ] Add new week to `HISTORIC_STANDINGS` in `src/data.js`
+- [ ] (Monthly) Update `VEGAS_PROJECTIONS` with latest odds
+
+## Deployment
+
+To deploy this app:
+
+```bash
+npm run build
+```
+
+Then deploy the `build/` folder to:
+- [Vercel](https://vercel.com)
+- [Netlify](https://netlify.com)
+- [GitHub Pages](https://pages.github.com)
+- Any static hosting service
+
+## Technologies Used
+
+- React 19
+- Tailwind CSS 3
+- Recharts (charting library)
+- Lucide React (icons)
+- ESPN NBA API (free, no auth required)
