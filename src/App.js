@@ -51,6 +51,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [historicDataVersion, setHistoricDataVersion] = useState(0);
 
   // Fetch standings on mount
   useEffect(() => {
@@ -75,6 +76,9 @@ export default function App() {
         console.log(`✅ App: Setting standings - East: ${data.East.length} teams, West: ${data.West.length} teams`);
         setStandings({ East: data.East, West: data.West });
         setLastUpdated(new Date());
+
+        // Save today's standings to localStorage for historic tracking
+        saveTodayStandings({ East: data.East, West: data.West });
       } else {
         console.warn('⚠️  App: API returned null, using fallback');
         // Keep using fallback standings
@@ -84,6 +88,26 @@ export default function App() {
     } finally {
       setLoading(false);
       setIsRefreshing(false);
+    }
+  };
+
+  // Save today's standings to localStorage
+  const saveTodayStandings = (standingsData) => {
+    try {
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const stored = localStorage.getItem('historic_daily_standings');
+      const historicData = stored ? JSON.parse(stored) : {};
+
+      // Only save if we don't already have data for today
+      if (!historicData[today]) {
+        historicData[today] = standingsData;
+        localStorage.setItem('historic_daily_standings', JSON.stringify(historicData));
+        console.log(`💾 Saved standings for ${today}`);
+        // Trigger re-render of historic data
+        setHistoricDataVersion(v => v + 1);
+      }
+    } catch (error) {
+      console.warn('Failed to save historic standings:', error);
     }
   };
 
@@ -156,13 +180,27 @@ export default function App() {
 
   // --- LOGIC: HISTORIC GRAPH DATA ---
   const historyData = useMemo(() => {
-    // Get all dates from DAILY_STANDINGS and sort chronologically
-    const dates = Object.keys(DAILY_STANDINGS).sort();
+    // Merge hardcoded DAILY_STANDINGS with localStorage saved standings
+    const allStandings = { ...DAILY_STANDINGS };
+
+    try {
+      const stored = localStorage.getItem('historic_daily_standings');
+      if (stored) {
+        const savedStandings = JSON.parse(stored);
+        // Merge saved standings (will override hardcoded data if dates overlap)
+        Object.assign(allStandings, savedStandings);
+      }
+    } catch (error) {
+      console.warn('Failed to load saved historic standings:', error);
+    }
+
+    // Get all dates and sort chronologically
+    const dates = Object.keys(allStandings).sort();
 
     if (dates.length > 0) {
       // Calculate scores for each historic date
       const data = dates.map(date => {
-        const dayStandings = DAILY_STANDINGS[date];
+        const dayStandings = allStandings[date];
         const dayScores = calculateScoresFromStandings(dayStandings);
 
         // Format date as "Nov 17" for chart label
@@ -209,7 +247,7 @@ export default function App() {
       };
       return data;
     }
-  }, [scoreData]);
+  }, [scoreData, historicDataVersion]);
 
   // --- LOGIC: PROJECTED STANDINGS (USING VEGAS ODDS) ---
   const projectedStandings = useMemo(() => {
