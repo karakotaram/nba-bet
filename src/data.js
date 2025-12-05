@@ -15,39 +15,39 @@ export const DRAFT = {
 };
 
 // Vegas Projected Win Totals (2025-26 Consensus)
-// UPDATE THESE MANUALLY: Sources: FanDuel, Covers, BetMGM
-// Last updated: Nov 2025
+// UPDATE THESE MANUALLY: Sources: FanDuel, Covers, SportsBettingDime
+// Last updated: Dec 4, 2025
 export const VEGAS_PROJECTIONS = {
-  "thunder": 63.5,
+  "thunder": 67.5,
+  "nuggets": 56.5,
+  "rockets": 56.5,
   "cavaliers": 55.5,
-  "nuggets": 53.5,
-  "rockets": 52.5,
+  "lakers": 53.5,
+  "pistons": 52.5,
   "knicks": 51.5,
-  "warriors": 50.5,
-  "lakers": 49.5,
-  "timberwolves": 48.5,
-  "clippers": 47.5,
-  "spurs": 46.5,
-  "pistons": 46.5,
-  "bucks": 46.5,
-  "magic": 45.5,
-  "76ers": 43.5,
+  "timberwolves": 49.5,
+  "warriors": 47.5,
+  "hawks": 47.5,
+  "magic": 47.5,
+  "heat": 46.5,
+  "spurs": 45.5,
+  "raptors": 45.5,
+  "76ers": 44.5,
   "celtics": 42.5,
-  "hawks": 42.5,
-  "bulls": 41.5,
-  "heat": 41.5,
-  "trail blazers": 39.5,
-  "raptors": 39.5,
-  "mavericks": 35.5,
-  "grizzlies": 34.5,
-  "pacers": 31.5,
-  "kings": 31.5,
-  "hornets": 30.5,
-  "pelicans": 30.5,
-  "suns": 29.5,
-  "jazz": 29.5,
-  "wizards": 19.5,
-  "nets": 17.5
+  "bucks": 42.5,
+  "bulls": 42.5,
+  "clippers": 40.5,
+  "suns": 38.5,
+  "trail blazers": 38.5,
+  "grizzlies": 32.5,
+  "mavericks": 31.5,
+  "kings": 26.5,
+  "hornets": 26.5,
+  "pacers": 25.5,
+  "pelicans": 23.5,
+  "jazz": 21.5,
+  "nets": 16.5,
+  "wizards": 15.5
 };
 
 // Historic Weekly Standings - 2025-26 Season
