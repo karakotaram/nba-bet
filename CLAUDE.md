@@ -27,6 +27,8 @@ npm test           # Run tests with Jest
 - **`src/data.js`** - Configuration hub:
   - `DRAFT` - Which teams each player drafted
   - `VEGAS_PROJECTIONS` - Win total odds (update from FanDuel/Covers/SportsBettingDime)
+  - `NBA_CUP_RESULTS` - NBA Cup semifinalists, runner-up, and champion
+  - `PLAYOFF_RESULTS` - Playoff series wins and finals champion
   - `FALLBACK_STANDINGS` - Used when ESPN API fails
   - `LEAGUE_HISTORY` - Past season results
   - `normalize()` - Team name normalization helper
@@ -36,7 +38,11 @@ npm test           # Run tests with Jest
 - **`src/App.js`** - Main React component with scoring logic in `calculateScoresFromStandings()`
 
 ### Scoring Calculation
-The scoring logic in `App.js:115-174` calculates points per team based on conference rank, applies the worst-team bonus, and tracks performance vs draft position expectations.
+The scoring logic in `App.js:115-240` calculates points per team:
+- **Regular Season**: `16 - conference_rank` (15 pts for 1st seed, 1 pt for 15th seed)
+- **Last Place Bonus**: +3 for the worst overall record
+- **NBA Cup**: +1 for semifinalists, +2 additional for runner-up, +4 additional for champion
+- **Playoffs**: +6 per series win, +12 for finals champion
 
 ## Updating Data
 
@@ -49,6 +55,25 @@ Add new entries to `DAILY_STANDINGS` in `src/historicStandings.js` with format:
 "YYYY-MM-DD": {
   East: [{ team: "TeamName", w: 0, l: 0 }, ...],
   West: [{ team: "TeamName", w: 0, l: 0 }, ...]
+}
+```
+
+### NBA Cup Results
+Update `NBA_CUP_RESULTS` in `src/data.js` as the tournament progresses:
+```javascript
+NBA_CUP_RESULTS = {
+  semifinalists: ["Thunder", "Rockets", "Bucks", "Hawks"],  // All 4 semifinalists
+  runnerUp: "Bucks",       // Finals loser
+  champion: "Thunder"      // Finals winner
+}
+```
+
+### Playoff Results
+Update `PLAYOFF_RESULTS` in `src/data.js` as playoffs progress:
+```javascript
+PLAYOFF_RESULTS = {
+  seriesWins: { "Thunder": 3, "Celtics": 2 },  // Series wins per team
+  finalsChampion: "Thunder"  // Finals winner
 }
 ```
 

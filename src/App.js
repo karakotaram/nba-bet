@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Trophy, TrendingUp, Calendar, AlertCircle, ArrowUp, Info, RefreshCw } from 'lucide-react';
 import { getStandings } from './api';
-import { DRAFT, VEGAS_PROJECTIONS, FALLBACK_STANDINGS, LEAGUE_HISTORY, normalize } from './data';
+import { DRAFT, VEGAS_PROJECTIONS, FALLBACK_STANDINGS, LEAGUE_HISTORY, NBA_CUP_RESULTS, PLAYOFF_RESULTS, normalize } from './data';
 import { DAILY_STANDINGS } from './historicStandings';
 
 const Card = ({ children, className = "" }) => (
@@ -116,6 +116,13 @@ export default function App() {
     const scores = { Chris: 0, Ian: 0, Karan: 0 };
     const details = { Chris: [], Ian: [], Karan: [] };
 
+    // Breakdown tracking for each player
+    const breakdown = {
+      Chris: { regularSeason: 0, nbaCup: 0, playoffs: 0, lastPlaceBonus: 0 },
+      Ian: { regularSeason: 0, nbaCup: 0, playoffs: 0, lastPlaceBonus: 0 },
+      Karan: { regularSeason: 0, nbaCup: 0, playoffs: 0, lastPlaceBonus: 0 }
+    };
+
     const findTeamData = (teamName) => {
       const n = normalize(teamName);
       let rank = standingsData.East.findIndex(t => normalize(t.team) === n);
@@ -139,28 +146,87 @@ export default function App() {
       }
     });
 
+    // Calculate NBA Cup bonus points per team
+    const getNbaCupBonus = (teamName) => {
+      const n = normalize(teamName);
+      let bonus = 0;
+
+      // Check if team made semifinals (1 point)
+      if (NBA_CUP_RESULTS.semifinalists.some(t => normalize(t) === n)) {
+        bonus += 1;
+      }
+
+      // Check if team is runner-up (additional 2 points)
+      if (NBA_CUP_RESULTS.runnerUp && normalize(NBA_CUP_RESULTS.runnerUp) === n) {
+        bonus += 2;
+      }
+
+      // Check if team is champion (additional 4 points instead of runner-up 2)
+      if (NBA_CUP_RESULTS.champion && normalize(NBA_CUP_RESULTS.champion) === n) {
+        bonus += 4; // Champion gets 4 additional (so 1 + 4 = 5 total if they made semis)
+      }
+
+      return bonus;
+    };
+
+    // Calculate Playoff bonus points per team
+    const getPlayoffBonus = (teamName) => {
+      const n = normalize(teamName);
+      let bonus = 0;
+
+      // Check series wins (6 points per series win)
+      const seriesWins = PLAYOFF_RESULTS.seriesWins[teamName] ||
+                         Object.entries(PLAYOFF_RESULTS.seriesWins).find(([key]) => normalize(key) === n)?.[1] || 0;
+      bonus += seriesWins * 6;
+
+      // Check if team won finals (additional 12 points)
+      if (PLAYOFF_RESULTS.finalsChampion && normalize(PLAYOFF_RESULTS.finalsChampion) === n) {
+        bonus += 12;
+      }
+
+      return bonus;
+    };
+
     Object.keys(DRAFT).forEach(player => {
       DRAFT[player].forEach((teamName, draftIndex) => {
         const data = findTeamData(teamName);
         const draftPosition = draftIndex + 1; // Draft picks are 1-10
-        let points = 16 - data.rank;
+        let regularSeasonPoints = 16 - data.rank;
 
         // Add 3-point bonus ONLY for the worst team overall
         const isWorstTeam = normalize(teamName) === worstTeam;
+        let lastPlaceBonus = 0;
         if (isWorstTeam) {
-          points += 3;
+          lastPlaceBonus = 3;
         }
+
+        // Get NBA Cup and Playoff bonuses
+        const nbaCupBonus = getNbaCupBonus(teamName);
+        const playoffBonus = getPlayoffBonus(teamName);
+
+        // Total points for this team
+        const totalPoints = regularSeasonPoints + lastPlaceBonus + nbaCupBonus + playoffBonus;
 
         // Calculate expected points based on draft position
         // Pick 1 should get ~15 pts, Pick 10 should get ~1 pt
         const expectedPoints = 16 - draftPosition;
-        const relativeToExpected = points - expectedPoints;
+        const relativeToExpected = totalPoints - expectedPoints;
 
-        scores[player] += points;
+        // Update breakdown
+        breakdown[player].regularSeason += regularSeasonPoints;
+        breakdown[player].lastPlaceBonus += lastPlaceBonus;
+        breakdown[player].nbaCup += nbaCupBonus;
+        breakdown[player].playoffs += playoffBonus;
+
+        scores[player] += totalPoints;
         details[player].push({
           ...data,
           name: teamName,
-          points,
+          points: totalPoints,
+          regularSeasonPoints,
+          nbaCupBonus,
+          playoffBonus,
+          lastPlaceBonus,
           draftPosition,
           expectedPoints,
           relativeToExpected,
@@ -170,7 +236,7 @@ export default function App() {
       details[player].sort((a, b) => b.points - a.points);
     });
 
-    return { scores, details };
+    return { scores, details, breakdown };
   };
 
   // --- LOGIC: CALCULATE CURRENT SCORES ---
@@ -448,6 +514,70 @@ export default function App() {
                     <Line type="monotone" dataKey="Ian" stroke="#a855f7" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
                   </LineChart>
                 </ResponsiveContainer>
+              </div>
+            </Card>
+
+            {/* Points Breakdown Table */}
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-yellow-400" />
+                Points Breakdown
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="text-slate-400 text-xs uppercase tracking-wider border-b border-slate-700">
+                      <th className="pb-3 pl-4">Player</th>
+                      <th className="pb-3 text-center">Regular Season</th>
+                      <th className="pb-3 text-center">NBA Cup</th>
+                      <th className="pb-3 text-center">Playoffs</th>
+                      <th className="pb-3 text-center">Last Place Bonus</th>
+                      <th className="pb-3 text-right pr-4">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-sm">
+                    {sortedLeaders.map(([player]) => {
+                      const b = scoreData.breakdown[player];
+                      const total = b.regularSeason + b.nbaCup + b.playoffs + b.lastPlaceBonus;
+                      return (
+                        <tr key={player} className="border-b border-slate-700/50 last:border-0 hover:bg-slate-800/50">
+                          <td className="py-4 pl-4 font-medium">{player}</td>
+                          <td className="py-4 text-center text-slate-300">{b.regularSeason}</td>
+                          <td className="py-4 text-center">
+                            {b.nbaCup > 0 ? (
+                              <span className="text-amber-400 font-semibold">{b.nbaCup}</span>
+                            ) : (
+                              <span className="text-slate-500">-</span>
+                            )}
+                          </td>
+                          <td className="py-4 text-center">
+                            {b.playoffs > 0 ? (
+                              <span className="text-green-400 font-semibold">{b.playoffs}</span>
+                            ) : (
+                              <span className="text-slate-500">-</span>
+                            )}
+                          </td>
+                          <td className="py-4 text-center">
+                            {b.lastPlaceBonus > 0 ? (
+                              <span className="text-purple-400 font-semibold">+{b.lastPlaceBonus}</span>
+                            ) : (
+                              <span className="text-slate-500">-</span>
+                            )}
+                          </td>
+                          <td className="py-4 text-right pr-4">
+                            <span className="text-white font-bold text-lg">{total}</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-4 text-xs text-slate-500 space-y-1">
+                <p><span className="text-slate-400">Regular Season:</span> 16 - conference rank per team</p>
+                <p><span className="text-slate-400">NBA Cup:</span> Semi: +1, Runner-up: +2 more, Champion: +4 more</p>
+                <p><span className="text-slate-400">Playoffs:</span> +6 per series win, Finals champion: +12 more</p>
+                <p><span className="text-slate-400">Last Place Bonus:</span> +3 for worst overall record</p>
               </div>
             </Card>
           </div>

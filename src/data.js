@@ -15,37 +15,37 @@ export const DRAFT = {
 };
 
 // Vegas Projected Win Totals (2025-26 Consensus)
-// UPDATE THESE MANUALLY: Sources: FanDuel, Covers, SportsBettingDime
-// Last updated: Dec 4, 2025
+// UPDATE THESE MANUALLY: Sources: BetOnline, Gambling911
+// Last updated: Dec 16, 2025
 export const VEGAS_PROJECTIONS = {
-  "thunder": 67.5,
-  "nuggets": 56.5,
-  "rockets": 56.5,
-  "cavaliers": 55.5,
-  "lakers": 53.5,
-  "pistons": 52.5,
-  "knicks": 51.5,
-  "timberwolves": 49.5,
-  "warriors": 47.5,
+  "thunder": 69.5,
+  "rockets": 58.5,
+  "nuggets": 55.5,
+  "lakers": 54.5,
+  "cavaliers": 53.5,
+  "pistons": 53.5,
+  "knicks": 52.5,
+  "magic": 49.5,
+  "timberwolves": 48.5,
   "hawks": 47.5,
-  "magic": 47.5,
+  "raptors": 47.5,
+  "warriors": 46.5,
   "heat": 46.5,
-  "spurs": 45.5,
-  "raptors": 45.5,
-  "76ers": 44.5,
+  "spurs": 46.5,
+  "76ers": 42.5,
   "celtics": 42.5,
-  "bucks": 42.5,
-  "bulls": 42.5,
-  "clippers": 40.5,
-  "suns": 38.5,
+  "bucks": 41.5,
+  "bulls": 41.5,
+  "clippers": 38.5,
   "trail blazers": 38.5,
-  "grizzlies": 32.5,
-  "mavericks": 31.5,
-  "kings": 26.5,
+  "suns": 37.5,
+  "grizzlies": 33.5,
+  "mavericks": 30.5,
   "hornets": 26.5,
-  "pacers": 25.5,
+  "kings": 25.5,
+  "pacers": 24.5,
   "pelicans": 23.5,
-  "jazz": 21.5,
+  "jazz": 22.5,
   "nets": 16.5,
   "wizards": 15.5
 };
@@ -67,6 +67,29 @@ export const VEGAS_PROJECTIONS = {
 export const HISTORIC_STANDINGS = [
   // Start adding your weekly data here
 ];
+
+// NBA Cup 2025-26 Results
+// Update these as the tournament progresses
+// Teams that made semifinals get 1 point each
+// Runner-up gets 2 additional points (3 total)
+// Champion gets 4 additional points (5 total)
+export const NBA_CUP_RESULTS = {
+  semifinalists: [], // e.g., ["Thunder", "Rockets", "Bucks", "Hawks"]
+  runnerUp: null,    // e.g., "Bucks"
+  champion: null     // e.g., "Thunder"
+};
+
+// Playoffs 2025-26 Results
+// Update these as the playoffs progress
+// Each series win earns 6 points
+// Finals winner gets 12 additional points
+export const PLAYOFF_RESULTS = {
+  // Track series wins per team
+  // e.g., { "Thunder": 3, "Celtics": 2 } means Thunder won 3 series, Celtics won 2
+  seriesWins: {},
+  // Finals champion gets bonus 12 points
+  finalsChampion: null
+};
 
 // League History - Past Winners
 export const LEAGUE_HISTORY = [
