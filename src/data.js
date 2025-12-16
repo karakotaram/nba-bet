@@ -74,9 +74,9 @@ export const HISTORIC_STANDINGS = [
 // Runner-up gets 2 additional points (3 total)
 // Champion gets 4 additional points (5 total)
 export const NBA_CUP_RESULTS = {
-  semifinalists: [], // e.g., ["Thunder", "Rockets", "Bucks", "Hawks"]
-  runnerUp: null,    // e.g., "Bucks"
-  champion: null     // e.g., "Thunder"
+  semifinalists: ["Thunder", "Spurs", "Magic", "Knicks"], // All 4 teams that made semis
+  runnerUp: null,    // Update after finals (Dec 16, 2025): Knicks vs Spurs
+  champion: null     // Update after finals (Dec 16, 2025): Knicks vs Spurs
 };
 
 // Playoffs 2025-26 Results
