@@ -244,7 +244,7 @@ export default function App() {
     return calculateScoresFromStandings(standings);
   }, [standings]);
 
-  // --- LOGIC: HISTORIC GRAPH DATA ---
+  // --- LOGIC: HISTORIC GRAPH DATA (Regular Season Points Only) ---
   const historyData = useMemo(() => {
     // Merge hardcoded DAILY_STANDINGS with localStorage saved standings
     const allStandings = { ...DAILY_STANDINGS };
@@ -264,7 +264,7 @@ export default function App() {
     const dates = Object.keys(allStandings).sort();
 
     if (dates.length > 0) {
-      // Calculate scores for each historic date
+      // Calculate scores for each historic date (regular season only)
       const data = dates.map(date => {
         const dayStandings = allStandings[date];
         const dayScores = calculateScoresFromStandings(dayStandings);
@@ -275,18 +275,18 @@ export default function App() {
 
         return {
           week: label,
-          Chris: dayScores.scores.Chris,
-          Ian: dayScores.scores.Ian,
-          Karan: dayScores.scores.Karan,
+          Chris: dayScores.breakdown.Chris.regularSeason,
+          Ian: dayScores.breakdown.Ian.regularSeason,
+          Karan: dayScores.breakdown.Karan.regularSeason,
         };
       });
 
-      // Add current standings as final point
+      // Add current standings as final point (regular season only)
       data.push({
         week: 'Now',
-        Chris: scoreData.scores.Chris,
-        Ian: scoreData.scores.Ian,
-        Karan: scoreData.scores.Karan,
+        Chris: scoreData.breakdown.Chris.regularSeason,
+        Ian: scoreData.breakdown.Ian.regularSeason,
+        Karan: scoreData.breakdown.Karan.regularSeason,
       });
 
       return data;
@@ -294,22 +294,22 @@ export default function App() {
       // Fallback: generate interpolated data if no historic data exists yet
       const weeks = 4;
       const data = [];
-      const finalScores = scoreData.scores;
+      const finalScores = scoreData.breakdown;
 
       for (let i = 0; i <= weeks; i++) {
         const progress = i / weeks;
         data.push({
           week: `Week ${i}`,
-          Chris: Math.round(finalScores.Chris * progress),
-          Ian: Math.round(finalScores.Ian * progress),
-          Karan: Math.round(finalScores.Karan * progress),
+          Chris: Math.round(finalScores.Chris.regularSeason * progress),
+          Ian: Math.round(finalScores.Ian.regularSeason * progress),
+          Karan: Math.round(finalScores.Karan.regularSeason * progress),
         });
       }
       data[weeks] = {
         week: 'Now',
-        Chris: finalScores.Chris,
-        Ian: finalScores.Ian,
-        Karan: finalScores.Karan
+        Chris: finalScores.Chris.regularSeason,
+        Ian: finalScores.Ian.regularSeason,
+        Karan: finalScores.Karan.regularSeason
       };
       return data;
     }
@@ -509,7 +509,7 @@ export default function App() {
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
                   <TrendingUp className="w-5 h-5 text-blue-400" />
-                  Season Trajectory
+                  Regular Season Points Trajectory
                   {Object.keys(DAILY_STANDINGS).length === 0 && (
                     <span className="text-xs text-amber-500 font-normal">(Simulated - Add daily data in src/historicStandings.js)</span>
                   )}
