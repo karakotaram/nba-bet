@@ -333,6 +333,11 @@ export default function App() {
     const rankedEast = allTeams.filter(t => t.conf === 'East').sort((a, b) => b.vegasWins - a.vegasWins);
     const rankedWest = allTeams.filter(t => t.conf === 'West').sort((a, b) => b.vegasWins - a.vegasWins);
 
+    // Find projected worst team (lowest Vegas wins)
+    const projectedWorstTeam = allTeams.reduce((worst, team) =>
+      team.vegasWins < worst.vegasWins ? team : worst
+    , allTeams[0]);
+
     // 3. Assign points based on Vegas Ranks
     Object.keys(DRAFT).forEach(player => {
       DRAFT[player].forEach(draftedTeam => {
@@ -348,6 +353,25 @@ export default function App() {
 
         if (rank !== -1) {
           projections[player] += (16 - rank);
+        }
+
+        // Add last place bonus if this is projected worst team
+        if (normalize(projectedWorstTeam.originalName) === n) {
+          projections[player] += 3;
+        }
+
+        // Add NBA Cup points (already earned)
+        // Semifinalist bonus
+        if (NBA_CUP_RESULTS.semifinalists.some(t => normalize(t) === n)) {
+          projections[player] += 1;
+        }
+        // Runner-up bonus
+        if (NBA_CUP_RESULTS.runnerUp && normalize(NBA_CUP_RESULTS.runnerUp) === n) {
+          projections[player] += 2;
+        }
+        // Champion bonus
+        if (NBA_CUP_RESULTS.champion && normalize(NBA_CUP_RESULTS.champion) === n) {
+          projections[player] += 4;
         }
       });
     });
