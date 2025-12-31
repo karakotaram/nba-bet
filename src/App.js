@@ -149,24 +149,23 @@ export default function App() {
     // Calculate NBA Cup bonus points per team
     const getNbaCupBonus = (teamName) => {
       const n = normalize(teamName);
-      let bonus = 0;
 
-      // Check if team made semifinals (1 point)
-      if (NBA_CUP_RESULTS.semifinalists.some(t => normalize(t) === n)) {
-        bonus += 1;
-      }
-
-      // Check if team is runner-up (additional 2 points)
-      if (NBA_CUP_RESULTS.runnerUp && normalize(NBA_CUP_RESULTS.runnerUp) === n) {
-        bonus += 2;
-      }
-
-      // Check if team is champion (additional 4 points instead of runner-up 2)
+      // Champion gets 4 points (exclusive)
       if (NBA_CUP_RESULTS.champion && normalize(NBA_CUP_RESULTS.champion) === n) {
-        bonus += 4; // Champion gets 4 additional (so 1 + 4 = 5 total if they made semis)
+        return 4;
       }
 
-      return bonus;
+      // Runner-up gets 2 points (exclusive)
+      if (NBA_CUP_RESULTS.runnerUp && normalize(NBA_CUP_RESULTS.runnerUp) === n) {
+        return 2;
+      }
+
+      // Semifinalist who didn't advance gets 1 point
+      if (NBA_CUP_RESULTS.semifinalists.some(t => normalize(t) === n)) {
+        return 1;
+      }
+
+      return 0;
     };
 
     // Calculate Playoff bonus points per team
@@ -360,18 +359,13 @@ export default function App() {
           projections[player] += 3;
         }
 
-        // Add NBA Cup points (already earned)
-        // Semifinalist bonus
-        if (NBA_CUP_RESULTS.semifinalists.some(t => normalize(t) === n)) {
-          projections[player] += 1;
-        }
-        // Runner-up bonus
-        if (NBA_CUP_RESULTS.runnerUp && normalize(NBA_CUP_RESULTS.runnerUp) === n) {
-          projections[player] += 2;
-        }
-        // Champion bonus
+        // Add NBA Cup points (already earned) - exclusive, not cumulative
         if (NBA_CUP_RESULTS.champion && normalize(NBA_CUP_RESULTS.champion) === n) {
           projections[player] += 4;
+        } else if (NBA_CUP_RESULTS.runnerUp && normalize(NBA_CUP_RESULTS.runnerUp) === n) {
+          projections[player] += 2;
+        } else if (NBA_CUP_RESULTS.semifinalists.some(t => normalize(t) === n)) {
+          projections[player] += 1;
         }
       });
     });
