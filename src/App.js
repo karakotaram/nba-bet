@@ -244,7 +244,7 @@ export default function App() {
   }, [standings]);
 
   // --- LOGIC: HISTORIC GRAPH DATA (Regular Season Points Only) ---
-  const historyData = useMemo(() => {
+  const { historyData, totalDaysTracked } = useMemo(() => {
     // Merge hardcoded DAILY_STANDINGS with localStorage saved standings
     const allStandings = { ...DAILY_STANDINGS };
 
@@ -261,6 +261,7 @@ export default function App() {
 
     // Get all dates and sort chronologically
     const dates = Object.keys(allStandings).sort();
+    const totalDaysTracked = dates.length;
 
     if (dates.length > 0) {
       // Calculate scores for each historic date (regular season only)
@@ -288,8 +289,9 @@ export default function App() {
         Karan: scoreData.breakdown.Karan.regularSeason,
       });
 
-      return data;
+      return { historyData: data, totalDaysTracked };
     } else {
+
       // Fallback: generate interpolated data if no historic data exists yet
       const weeks = 4;
       const data = [];
@@ -310,7 +312,7 @@ export default function App() {
         Ian: finalScores.Ian.regularSeason,
         Karan: finalScores.Karan.regularSeason
       };
-      return data;
+      return { historyData: data, totalDaysTracked: 0 };
     }
   }, [scoreData, historicDataVersion]);
 
@@ -504,11 +506,11 @@ export default function App() {
                 <h3 className="text-lg font-semibold flex items-center gap-2">
                   <TrendingUp className="w-5 h-5 text-blue-400" />
                   Regular Season Points Trajectory
-                  {Object.keys(DAILY_STANDINGS).length === 0 && (
+                  {totalDaysTracked === 0 && (
                     <span className="text-xs text-amber-500 font-normal">(Simulated - Add daily data in src/historicStandings.js)</span>
                   )}
-                  {Object.keys(DAILY_STANDINGS).length > 0 && (
-                    <span className="text-xs text-green-400 font-normal">({Object.keys(DAILY_STANDINGS).length} days tracked)</span>
+                  {totalDaysTracked > 0 && (
+                    <span className="text-xs text-green-400 font-normal">({totalDaysTracked} days tracked)</span>
                   )}
                 </h3>
                 <div className="flex gap-4 text-xs">
@@ -521,7 +523,7 @@ export default function App() {
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={historyData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-                    <XAxis dataKey="week" stroke="#94a3b8" tick={{ fontSize: 12 }} tickMargin={10} />
+                    <XAxis dataKey="week" stroke="#94a3b8" tick={{ fontSize: 11 }} tickMargin={10} interval={Math.max(0, Math.floor(historyData.length / 8) - 1)} angle={-45} textAnchor="end" height={60} />
                     <YAxis stroke="#94a3b8" tick={{ fontSize: 12 }} domain={['dataMin - 10', 'dataMax + 10']} />
                     <Tooltip
                       contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f1f5f9' }}

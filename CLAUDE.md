@@ -41,7 +41,7 @@ npm test           # Run tests with Jest
 The scoring logic in `App.js:115-240` calculates points per team:
 - **Regular Season**: `16 - conference_rank` (15 pts for 1st seed, 1 pt for 15th seed)
 - **Last Place Bonus**: +3 for the worst overall record
-- **NBA Cup**: +1 for semifinalists, +2 additional for runner-up, +4 additional for champion
+- **NBA Cup**: +1 for semifinalists (not advancing), +2 for runner-up, +4 for champion (exclusive, not cumulative)
 - **Playoffs**: +6 per series win, +12 for finals champion
 
 ## Updating Data
