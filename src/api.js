@@ -145,6 +145,11 @@ function normalizeTeamName(espnName) {
   return mapping[espnName] || espnName;
 }
 
+// Bumped to v2 when standings entries gained the `playoffSeed` field.
+// Older cached entries lacked this field, so they would re-render in the
+// pre-fix sort order until expiry. Bumping invalidates them immediately.
+const STANDINGS_CACHE_VERSION = 2;
+
 /**
  * Get cached standings with cache expiration
  * Caches for 1 hour to reduce API calls
@@ -154,7 +159,12 @@ export function getCachedStandings() {
   if (!cached) return null;
 
   try {
-    const { data, timestamp } = JSON.parse(cached);
+    const { data, timestamp, version } = JSON.parse(cached);
+    if (version !== STANDINGS_CACHE_VERSION) {
+      console.log('🔄 Cache schema changed, ignoring old cache');
+      localStorage.removeItem('nba_standings_cache');
+      return null;
+    }
     const age = Date.now() - timestamp;
     const ONE_HOUR = 60 * 60 * 1000;
 
@@ -178,7 +188,8 @@ export function cacheStandings(data) {
   try {
     localStorage.setItem('nba_standings_cache', JSON.stringify({
       data,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      version: STANDINGS_CACHE_VERSION
     }));
     console.log('💾 Cached standings data');
   } catch (error) {
