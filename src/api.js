@@ -1,6 +1,26 @@
 // NBA API Service
 // Uses ESPN's free public API for live NBA standings
 
+// Conference-rank sort. Top 8 use ESPN's playoff seed (which reflects play-in
+// outcomes for the 7 and 8 seeds). 9th and below are sorted by regular season
+// win pct, so a team that loses a play-in game does not get bumped past a team
+// with a worse record. Falls back to pure win pct when no seed is provided
+// (e.g. for historic mid-season snapshots).
+const sortBySeed = (a, b) => {
+  const seedA = a.playoffSeed;
+  const seedB = b.playoffSeed;
+  const isPlayoffA = seedA != null && seedA <= 8;
+  const isPlayoffB = seedB != null && seedB <= 8;
+
+  if (isPlayoffA && isPlayoffB) return seedA - seedB;
+  if (isPlayoffA) return -1;
+  if (isPlayoffB) return 1;
+
+  const pctA = a.w / (a.w + a.l || 1);
+  const pctB = b.w / (b.w + b.l || 1);
+  return pctB - pctA;
+};
+
 /**
  * Fetch standings from ESPN's public API
  * This is free and doesn't require authentication
@@ -42,16 +62,19 @@ export async function fetchESPNStandings() {
             // Find wins and losses from stats array
             const winsObj = stats.find(s => s.name === 'wins');
             const lossesObj = stats.find(s => s.name === 'losses');
+            const seedObj = stats.find(s => s.name === 'playoffSeed');
 
             const wins = winsObj?.value || 0;
             const losses = lossesObj?.value || 0;
+            const playoffSeed = seedObj?.value;
 
-            console.log(`  ${teamName}: ${wins}-${losses}`);
+            console.log(`  ${teamName}: ${wins}-${losses} (seed ${playoffSeed ?? '?'})`);
 
             standingsArray.push({
               team: normalizeTeamName(teamName),
               w: parseInt(wins),
-              l: parseInt(losses)
+              l: parseInt(losses),
+              playoffSeed: playoffSeed != null ? parseInt(playoffSeed) : null
             });
           });
         } else {
@@ -62,15 +85,8 @@ export async function fetchESPNStandings() {
       console.warn('⚠️  No children found in API response');
     }
 
-    // Sort by win percentage
-    const sortByWinPct = (a, b) => {
-      const pctA = a.w / (a.w + a.l || 1);
-      const pctB = b.w / (b.w + b.l || 1);
-      return pctB - pctA;
-    };
-
-    eastStandings.sort(sortByWinPct);
-    westStandings.sort(sortByWinPct);
+    eastStandings.sort(sortBySeed);
+    westStandings.sort(sortBySeed);
 
     console.log('✅ Successfully fetched NBA standings from ESPN API');
     console.log(`East: ${eastStandings.length} teams, West: ${westStandings.length} teams`);
@@ -194,6 +210,110 @@ export async function getStandings() {
 }
 
 /**
+ * Fetch playoff results from ESPN scoreboard.
+ * Walks every playoff game, groups by series (round + matchup),
+ * and tallies series wins. A team "wins" a series at 4 wins.
+ * Returns { seriesWins: { Team: count }, finalsChampion: Team|null }
+ */
+export async function fetchPlayoffResults() {
+  // Cover the whole 2026 playoff window. ESPN accepts a YYYYMMDD-YYYYMMDD range.
+  const DATE_RANGE = '20260415-20260630';
+  const url = `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?seasontype=3&dates=${DATE_RANGE}`;
+
+  try {
+    console.log('🏆 Fetching playoff results from ESPN...');
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`ESPN API Error: ${response.status}`);
+
+    const data = await response.json();
+    const events = data.events || [];
+
+    // series key -> { round, wins: { TeamName: int } }
+    const series = new Map();
+
+    events.forEach(event => {
+      const comp = event.competitions?.[0];
+      if (!comp) return;
+
+      const status = event.status?.type?.state;
+      if (status !== 'post') return; // only completed games
+
+      const headline = comp.notes?.[0]?.headline || '';
+      if (!headline || headline.includes('Play-In')) return;
+
+      // Headline format: "{Round} - Game {N}", e.g. "East 1st Round - Game 3"
+      const round = headline.split(' - Game ')[0].trim();
+      if (!round) return;
+
+      const competitors = comp.competitors || [];
+      const teams = competitors.map(c => c.team?.name).filter(Boolean);
+      if (teams.length !== 2) return;
+
+      const winner = competitors.find(c => c.winner)?.team?.name;
+      if (!winner) return;
+
+      // Series key is round + sorted matchup so we tolerate home/away order changes
+      const matchup = [...teams].sort();
+      const key = `${round}|${matchup.join(' vs ')}`;
+
+      if (!series.has(key)) {
+        series.set(key, { round, wins: { [matchup[0]]: 0, [matchup[1]]: 0 } });
+      }
+      series.get(key).wins[winner] += 1;
+    });
+
+    const seriesWins = {};
+    let finalsChampion = null;
+
+    series.forEach(({ round, wins }) => {
+      Object.entries(wins).forEach(([team, count]) => {
+        if (count >= 4) {
+          seriesWins[team] = (seriesWins[team] || 0) + 1;
+          // "NBA Finals" = championship round (distinct from "Conf Finals")
+          if (/^NBA Finals$/i.test(round)) {
+            finalsChampion = team;
+          }
+        }
+      });
+    });
+
+    console.log('✅ Playoff results:', { seriesWins, finalsChampion });
+    return { seriesWins, finalsChampion };
+  } catch (error) {
+    console.warn('❌ Playoff fetch failed:', error.message);
+    return null;
+  }
+}
+
+const PLAYOFF_CACHE_KEY = 'nba_playoff_results_cache';
+
+export async function getPlayoffResults() {
+  try {
+    const cached = localStorage.getItem(PLAYOFF_CACHE_KEY);
+    if (cached) {
+      const { data, timestamp } = JSON.parse(cached);
+      const age = Date.now() - timestamp;
+      if (age < 60 * 60 * 1000) {
+        console.log(`📦 Using cached playoff results (${Math.round(age / 60000)} min old)`);
+        return data;
+      }
+    }
+  } catch (e) {
+    console.warn('Playoff cache parse error:', e);
+  }
+
+  const fresh = await fetchPlayoffResults();
+  if (fresh) {
+    try {
+      localStorage.setItem(PLAYOFF_CACHE_KEY, JSON.stringify({ data: fresh, timestamp: Date.now() }));
+    } catch (e) {
+      console.warn('Playoff cache write error:', e);
+    }
+  }
+  return fresh;
+}
+
+/**
  * Fetch standings for a specific date
  * @param {string} date - Date in YYYYMMDD format
  */
@@ -225,29 +345,25 @@ export async function fetchStandingsByDate(date) {
 
             const winsObj = stats.find(s => s.name === 'wins');
             const lossesObj = stats.find(s => s.name === 'losses');
+            const seedObj = stats.find(s => s.name === 'playoffSeed');
 
             const wins = winsObj?.value || 0;
             const losses = lossesObj?.value || 0;
+            const playoffSeed = seedObj?.value;
 
             standingsArray.push({
               team: normalizeTeamName(teamName),
               w: parseInt(wins),
-              l: parseInt(losses)
+              l: parseInt(losses),
+              playoffSeed: playoffSeed != null ? parseInt(playoffSeed) : null
             });
           });
         }
       });
     }
 
-    // Sort by win percentage
-    const sortByWinPct = (a, b) => {
-      const pctA = a.w / (a.w + a.l || 1);
-      const pctB = b.w / (b.w + b.l || 1);
-      return pctB - pctA;
-    };
-
-    eastStandings.sort(sortByWinPct);
-    westStandings.sort(sortByWinPct);
+    eastStandings.sort(sortBySeed);
+    westStandings.sort(sortBySeed);
 
     return {
       East: eastStandings,

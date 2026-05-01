@@ -1,9 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Trophy, TrendingUp, Calendar, AlertCircle, ArrowUp, Info, RefreshCw } from 'lucide-react';
-import { getStandings } from './api';
+import { getStandings, getPlayoffResults } from './api';
 import { DRAFT, VEGAS_PROJECTIONS, FALLBACK_STANDINGS, LEAGUE_HISTORY, NBA_CUP_RESULTS, PLAYOFF_RESULTS, normalize } from './data';
 import { DAILY_STANDINGS } from './historicStandings';
+import { calculateScoresFromStandings } from './scoring';
+import Simulator from './Simulator';
 
 const Card = ({ children, className = "" }) => (
   <div className={`bg-slate-800 border border-slate-700 rounded-xl shadow-lg overflow-hidden ${className}`}>
@@ -48,15 +50,27 @@ const TeamRow = ({ teamName, points, record, rank, draftPosition, relativeToExpe
 export default function App() {
   const [activeTab, setActiveTab] = useState('overview');
   const [standings, setStandings] = useState(FALLBACK_STANDINGS);
+  const [playoffResults, setPlayoffResults] = useState(PLAYOFF_RESULTS);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [historicDataVersion, setHistoricDataVersion] = useState(0);
 
-  // Fetch standings on mount
+  // Fetch standings + playoff results on mount
   useEffect(() => {
     fetchStandings();
+    fetchPlayoffs();
   }, []);
+
+  const fetchPlayoffs = async (forceFresh = false) => {
+    try {
+      if (forceFresh) localStorage.removeItem('nba_playoff_results_cache');
+      const results = await getPlayoffResults();
+      if (results) setPlayoffResults(results);
+    } catch (error) {
+      console.error('❌ App: Failed to fetch playoff results:', error);
+    }
+  };
 
   const fetchStandings = async (forceFresh = false) => {
     setIsRefreshing(true);
@@ -111,137 +125,10 @@ export default function App() {
     }
   };
 
-  // Helper function to calculate scores from standings
-  const calculateScoresFromStandings = (standingsData) => {
-    const scores = { Chris: 0, Ian: 0, Karan: 0 };
-    const details = { Chris: [], Ian: [], Karan: [] };
-
-    // Breakdown tracking for each player
-    const breakdown = {
-      Chris: { regularSeason: 0, nbaCup: 0, playoffs: 0, lastPlaceBonus: 0 },
-      Ian: { regularSeason: 0, nbaCup: 0, playoffs: 0, lastPlaceBonus: 0 },
-      Karan: { regularSeason: 0, nbaCup: 0, playoffs: 0, lastPlaceBonus: 0 }
-    };
-
-    const findTeamData = (teamName) => {
-      const n = normalize(teamName);
-      let rank = standingsData.East.findIndex(t => normalize(t.team) === n);
-      if (rank !== -1) return { ...standingsData.East[rank], rank: rank + 1, conf: 'East' };
-
-      rank = standingsData.West.findIndex(t => normalize(t.team) === n);
-      if (rank !== -1) return { ...standingsData.West[rank], rank: rank + 1, conf: 'West' };
-
-      return { team: teamName, w: 0, l: 0, rank: 15, conf: 'Unknown' };
-    };
-
-    // Find the worst team overall (lowest win percentage across both conferences)
-    let worstTeam = null;
-    let worstWinPct = 1.0;
-
-    [...standingsData.East, ...standingsData.West].forEach(team => {
-      const winPct = team.w / (team.w + team.l || 1);
-      if (winPct < worstWinPct) {
-        worstWinPct = winPct;
-        worstTeam = normalize(team.team);
-      }
-    });
-
-    // Calculate NBA Cup bonus points per team
-    const getNbaCupBonus = (teamName) => {
-      const n = normalize(teamName);
-
-      // Champion gets 4 points (exclusive)
-      if (NBA_CUP_RESULTS.champion && normalize(NBA_CUP_RESULTS.champion) === n) {
-        return 4;
-      }
-
-      // Runner-up gets 2 points (exclusive)
-      if (NBA_CUP_RESULTS.runnerUp && normalize(NBA_CUP_RESULTS.runnerUp) === n) {
-        return 2;
-      }
-
-      // Semifinalist who didn't advance gets 1 point
-      if (NBA_CUP_RESULTS.semifinalists.some(t => normalize(t) === n)) {
-        return 1;
-      }
-
-      return 0;
-    };
-
-    // Calculate Playoff bonus points per team
-    const getPlayoffBonus = (teamName) => {
-      const n = normalize(teamName);
-      let bonus = 0;
-
-      // Check series wins (6 points per series win)
-      const seriesWins = PLAYOFF_RESULTS.seriesWins[teamName] ||
-                         Object.entries(PLAYOFF_RESULTS.seriesWins).find(([key]) => normalize(key) === n)?.[1] || 0;
-      bonus += seriesWins * 6;
-
-      // Check if team won finals (additional 12 points)
-      if (PLAYOFF_RESULTS.finalsChampion && normalize(PLAYOFF_RESULTS.finalsChampion) === n) {
-        bonus += 12;
-      }
-
-      return bonus;
-    };
-
-    Object.keys(DRAFT).forEach(player => {
-      DRAFT[player].forEach((teamName, draftIndex) => {
-        const data = findTeamData(teamName);
-        const draftPosition = draftIndex + 1; // Draft picks are 1-10
-        let regularSeasonPoints = 16 - data.rank;
-
-        // Add 3-point bonus ONLY for the worst team overall
-        const isWorstTeam = normalize(teamName) === worstTeam;
-        let lastPlaceBonus = 0;
-        if (isWorstTeam) {
-          lastPlaceBonus = 3;
-        }
-
-        // Get NBA Cup and Playoff bonuses
-        const nbaCupBonus = getNbaCupBonus(teamName);
-        const playoffBonus = getPlayoffBonus(teamName);
-
-        // Total points for this team
-        const totalPoints = regularSeasonPoints + lastPlaceBonus + nbaCupBonus + playoffBonus;
-
-        // Calculate expected points based on draft position
-        // Pick 1 should get ~15 pts, Pick 10 should get ~1 pt
-        const expectedPoints = 16 - draftPosition;
-        const relativeToExpected = totalPoints - expectedPoints;
-
-        // Update breakdown
-        breakdown[player].regularSeason += regularSeasonPoints;
-        breakdown[player].lastPlaceBonus += lastPlaceBonus;
-        breakdown[player].nbaCup += nbaCupBonus;
-        breakdown[player].playoffs += playoffBonus;
-
-        scores[player] += totalPoints;
-        details[player].push({
-          ...data,
-          name: teamName,
-          points: totalPoints,
-          regularSeasonPoints,
-          nbaCupBonus,
-          playoffBonus,
-          lastPlaceBonus,
-          draftPosition,
-          expectedPoints,
-          relativeToExpected,
-          isWorstTeam
-        });
-      });
-      details[player].sort((a, b) => b.points - a.points);
-    });
-
-    return { scores, details, breakdown };
-  };
-
   // --- LOGIC: CALCULATE CURRENT SCORES ---
   const scoreData = useMemo(() => {
-    return calculateScoresFromStandings(standings);
-  }, [standings]);
+    return calculateScoresFromStandings(standings, playoffResults);
+  }, [standings, playoffResults]);
 
   // --- LOGIC: HISTORIC GRAPH DATA (Regular Season Points Only) ---
   const { historyData, totalDaysTracked } = useMemo(() => {
@@ -264,7 +151,8 @@ export default function App() {
     const totalDaysTracked = dates.length;
 
     if (dates.length > 0) {
-      // Calculate scores for each historic date (regular season only)
+      // Calculate scores for each historic date (regular season only).
+      // No playoff results passed since we only read breakdown.regularSeason.
       const data = dates.map(date => {
         const dayStandings = allStandings[date];
         const dayScores = calculateScoresFromStandings(dayStandings);
@@ -444,7 +332,7 @@ export default function App() {
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => fetchStandings(true)}
+              onClick={() => { fetchStandings(true); fetchPlayoffs(true); }}
               disabled={isRefreshing}
               className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs transition-colors disabled:opacity-50"
               title="Clear cache and fetch fresh data"
@@ -483,7 +371,7 @@ export default function App() {
 
         {/* Tabs */}
         <div className="flex gap-2 border-b border-slate-800">
-          {['overview', 'teams', 'projections', 'history'].map(tab => (
+          {['overview', 'teams', 'projections', 'simulator', 'history'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -728,6 +616,10 @@ export default function App() {
               </Card>
             </div>
           </div>
+        )}
+
+        {activeTab === 'simulator' && (
+          <Simulator standings={standings} realPlayoffResults={playoffResults} />
         )}
 
         {activeTab === 'history' && (
