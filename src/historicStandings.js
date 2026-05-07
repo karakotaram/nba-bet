@@ -7289,5 +7289,42 @@ export const DAILY_STANDINGS = {
       { team: "Kings", w: 22, l: 60 },
       { team: "Jazz", w: 22, l: 60 }
     ]
+  },
+
+  "2026-05-07": {
+    East: [
+      { team: "Pistons", w: 60, l: 22 },
+      { team: "Celtics", w: 56, l: 26 },
+      { team: "Knicks", w: 53, l: 29 },
+      { team: "Cavaliers", w: 52, l: 30 },
+      { team: "Hawks", w: 46, l: 36 },
+      { team: "Raptors", w: 46, l: 36 },
+      { team: "76ers", w: 45, l: 37 },
+      { team: "Magic", w: 45, l: 37 },
+      { team: "Hornets", w: 44, l: 38 },
+      { team: "Heat", w: 43, l: 39 },
+      { team: "Bucks", w: 32, l: 50 },
+      { team: "Bulls", w: 31, l: 51 },
+      { team: "Nets", w: 20, l: 62 },
+      { team: "Pacers", w: 19, l: 63 },
+      { team: "Wizards", w: 17, l: 65 }
+    ],
+    West: [
+      { team: "Thunder", w: 64, l: 18 },
+      { team: "Spurs", w: 62, l: 20 },
+      { team: "Nuggets", w: 54, l: 28 },
+      { team: "Lakers", w: 53, l: 29 },
+      { team: "Rockets", w: 52, l: 30 },
+      { team: "Timberwolves", w: 49, l: 33 },
+      { team: "Suns", w: 45, l: 37 },
+      { team: "Trail Blazers", w: 42, l: 40 },
+      { team: "Clippers", w: 42, l: 40 },
+      { team: "Warriors", w: 37, l: 45 },
+      { team: "Pelicans", w: 26, l: 56 },
+      { team: "Mavericks", w: 26, l: 56 },
+      { team: "Grizzlies", w: 25, l: 57 },
+      { team: "Kings", w: 22, l: 60 },
+      { team: "Jazz", w: 22, l: 60 }
+    ]
   }
 };
