@@ -56,12 +56,12 @@ const buildInitialPicks = (eastR1, westR1, real) => {
   return picks;
 };
 
-// Every pick (R1 → Finals) is a 6-pt series win; the champion key also flags
-// the +12 finals bonus.
+// R1 through Conference Finals are 6-pt series wins; the Finals winner gets
+// +12 (no separate series win for the Finals).
 const buildSimulatedResults = (picks) => {
   const seriesWins = {};
   Object.entries(picks).forEach(([key, team]) => {
-    if (!team) return;
+    if (!team || key === 'champion') return;
     seriesWins[team] = (seriesWins[team] || 0) + 1;
   });
   return { seriesWins, finalsChampion: picks.champion || null };
@@ -325,7 +325,7 @@ export default function Simulator({ standings, realPlayoffResults }) {
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <Trophy className="w-5 h-5 text-yellow-400" />
           NBA Finals
-          <span className="text-xs font-normal text-slate-500">(winner +6 series, +12 champion)</span>
+          <span className="text-xs font-normal text-slate-500">(winner +12)</span>
         </h3>
         <div className="max-w-md mx-auto">
           <MatchupCard matchup={matchups.champion} onPick={handlePick} teamSeed={teamSeed} />
