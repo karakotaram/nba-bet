@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Trophy, TrendingUp, Calendar, AlertCircle, ArrowUp, Info, RefreshCw } from 'lucide-react';
-import { getStandings, getPlayoffResults } from './api';
-import { DRAFT, VEGAS_PROJECTIONS, FALLBACK_STANDINGS, LEAGUE_HISTORY, NBA_CUP_RESULTS, PLAYOFF_RESULTS, normalize } from './data';
-import { DAILY_STANDINGS } from './historicStandings';
+import { getPlayoffResults } from './api';
+import { DRAFT, VEGAS_PROJECTIONS, LEAGUE_HISTORY, NBA_CUP_RESULTS, PLAYOFF_RESULTS, normalize } from './data';
+import { DAILY_STANDINGS, FINAL_REGULAR_SEASON_STANDINGS, REGULAR_SEASON_END_DATE } from './historicStandings';
 import { calculateScoresFromStandings } from './scoring';
 import Simulator from './Simulator';
 
@@ -49,79 +49,29 @@ const TeamRow = ({ teamName, points, record, rank, draftPosition, relativeToExpe
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('overview');
-  const [standings, setStandings] = useState(FALLBACK_STANDINGS);
+  // Regular season is over, so its standings are frozen to the final snapshot.
+  // Only playoff results are still fetched live.
+  const [standings] = useState(FINAL_REGULAR_SEASON_STANDINGS);
   const [playoffResults, setPlayoffResults] = useState(PLAYOFF_RESULTS);
-  const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [historicDataVersion, setHistoricDataVersion] = useState(0);
 
-  // Fetch standings + playoff results on mount
+  // Fetch live playoff results on mount
   useEffect(() => {
-    fetchStandings();
     fetchPlayoffs();
   }, []);
 
   const fetchPlayoffs = async (forceFresh = false) => {
+    setIsRefreshing(true);
     try {
       if (forceFresh) localStorage.removeItem('nba_playoff_results_cache');
       const results = await getPlayoffResults();
       if (results) setPlayoffResults(results);
+      setLastUpdated(new Date());
     } catch (error) {
       console.error('❌ App: Failed to fetch playoff results:', error);
-    }
-  };
-
-  const fetchStandings = async (forceFresh = false) => {
-    setIsRefreshing(true);
-    try {
-      console.log('🔄 App: Starting to fetch standings...');
-
-      // Clear cache if forceFresh is true
-      if (forceFresh) {
-        console.log('🗑️  Clearing standings cache...');
-        localStorage.removeItem('nba_standings_cache');
-      }
-
-      const data = await getStandings();
-      console.log('📥 App: Received data:', data);
-
-      if (data && data.East && data.West) {
-        console.log(`✅ App: Setting standings - East: ${data.East.length} teams, West: ${data.West.length} teams`);
-        setStandings({ East: data.East, West: data.West });
-        setLastUpdated(new Date());
-
-        // Save today's standings to localStorage for historic tracking
-        saveTodayStandings({ East: data.East, West: data.West });
-      } else {
-        console.warn('⚠️  App: API returned null, using fallback');
-        // Keep using fallback standings
-      }
-    } catch (error) {
-      console.error('❌ App: Failed to fetch standings:', error);
     } finally {
-      setLoading(false);
       setIsRefreshing(false);
-    }
-  };
-
-  // Save today's standings to localStorage
-  const saveTodayStandings = (standingsData) => {
-    try {
-      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-      const stored = localStorage.getItem('historic_daily_standings');
-      const historicData = stored ? JSON.parse(stored) : {};
-
-      // Only save if we don't already have data for today
-      if (!historicData[today]) {
-        historicData[today] = standingsData;
-        localStorage.setItem('historic_daily_standings', JSON.stringify(historicData));
-        console.log(`💾 Saved standings for ${today}`);
-        // Trigger re-render of historic data
-        setHistoricDataVersion(v => v + 1);
-      }
-    } catch (error) {
-      console.warn('Failed to save historic standings:', error);
     }
   };
 
@@ -132,77 +82,29 @@ export default function App() {
 
   // --- LOGIC: HISTORIC GRAPH DATA (Regular Season Points Only) ---
   const { historyData, totalDaysTracked } = useMemo(() => {
-    // Merge hardcoded DAILY_STANDINGS with localStorage saved standings
-    const allStandings = { ...DAILY_STANDINGS };
+    // The regular season is final, so the trajectory ends on its last day. We
+    // only plot dates up to REGULAR_SEASON_END_DATE — no live "Now" point and
+    // no localStorage merge, so post-season seed reshuffles can't bend the line.
+    const dates = Object.keys(DAILY_STANDINGS)
+      .filter(date => date <= REGULAR_SEASON_END_DATE)
+      .sort();
 
-    try {
-      const stored = localStorage.getItem('historic_daily_standings');
-      if (stored) {
-        const savedStandings = JSON.parse(stored);
-        // Merge saved standings (will override hardcoded data if dates overlap)
-        Object.assign(allStandings, savedStandings);
-      }
-    } catch (error) {
-      console.warn('Failed to load saved historic standings:', error);
-    }
+    // Regular season only — no playoff results passed since we only read
+    // breakdown.regularSeason.
+    const data = dates.map(date => {
+      const dayScores = calculateScoresFromStandings(DAILY_STANDINGS[date]);
+      const label = new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-    // Get all dates and sort chronologically
-    const dates = Object.keys(allStandings).sort();
-    const totalDaysTracked = dates.length;
-
-    if (dates.length > 0) {
-      // Calculate scores for each historic date (regular season only).
-      // No playoff results passed since we only read breakdown.regularSeason.
-      const data = dates.map(date => {
-        const dayStandings = allStandings[date];
-        const dayScores = calculateScoresFromStandings(dayStandings);
-
-        // Format date as "Nov 17" for chart label
-        const dateObj = new Date(date);
-        const label = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
-        return {
-          week: label,
-          Chris: dayScores.breakdown.Chris.regularSeason,
-          Ian: dayScores.breakdown.Ian.regularSeason,
-          Karan: dayScores.breakdown.Karan.regularSeason,
-        };
-      });
-
-      // Add current standings as final point (regular season only)
-      data.push({
-        week: 'Now',
-        Chris: scoreData.breakdown.Chris.regularSeason,
-        Ian: scoreData.breakdown.Ian.regularSeason,
-        Karan: scoreData.breakdown.Karan.regularSeason,
-      });
-
-      return { historyData: data, totalDaysTracked };
-    } else {
-
-      // Fallback: generate interpolated data if no historic data exists yet
-      const weeks = 4;
-      const data = [];
-      const finalScores = scoreData.breakdown;
-
-      for (let i = 0; i <= weeks; i++) {
-        const progress = i / weeks;
-        data.push({
-          week: `Week ${i}`,
-          Chris: Math.round(finalScores.Chris.regularSeason * progress),
-          Ian: Math.round(finalScores.Ian.regularSeason * progress),
-          Karan: Math.round(finalScores.Karan.regularSeason * progress),
-        });
-      }
-      data[weeks] = {
-        week: 'Now',
-        Chris: finalScores.Chris.regularSeason,
-        Ian: finalScores.Ian.regularSeason,
-        Karan: finalScores.Karan.regularSeason
+      return {
+        week: label,
+        Chris: dayScores.breakdown.Chris.regularSeason,
+        Ian: dayScores.breakdown.Ian.regularSeason,
+        Karan: dayScores.breakdown.Karan.regularSeason,
       };
-      return { historyData: data, totalDaysTracked: 0 };
-    }
-  }, [scoreData, historicDataVersion]);
+    });
+
+    return { historyData: data, totalDaysTracked: dates.length };
+  }, []);
 
   // --- LOGIC: PROJECTED STANDINGS (USING VEGAS ODDS) ---
   const projectedStandings = useMemo(() => {
@@ -275,9 +177,6 @@ export default function App() {
         const currentRank = idx + 1;
         const currentPoints = 16 - currentRank;
 
-        // Get Vegas projected wins
-        const vegasWins = VEGAS_PROJECTIONS[n] || 30;
-
         // Find Vegas-based rank within conference
         const confTeams = standings[conf].map(team => ({
           name: team.team,
@@ -332,7 +231,7 @@ export default function App() {
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => { fetchStandings(true); fetchPlayoffs(true); }}
+              onClick={() => fetchPlayoffs(true)}
               disabled={isRefreshing}
               className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs transition-colors disabled:opacity-50"
               title="Clear cache and fetch fresh data"
