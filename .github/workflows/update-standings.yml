@@ -1,9 +1,12 @@
 name: Update Daily Standings
 
 on:
-  schedule:
-    # Run at 10am UTC (5am ET / 2am PT) - after all NBA games have finished
-    - cron: '0 10 * * *'
+  # Daily schedule is DISABLED in the offseason — the 2026 regular season is over
+  # and final standings are frozen. To re-enable for NBA Bet 2027, uncomment the
+  # schedule block below.
+  # schedule:
+  #   # Run at 10am UTC (5am ET / 2am PT) - after all NBA games have finished
+  #   - cron: '0 10 * * *'
   workflow_dispatch: # Allow manual trigger
 
 permissions:
