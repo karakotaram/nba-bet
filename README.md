@@ -153,6 +153,32 @@ src/
 - [ ] Add new week to `HISTORIC_STANDINGS` in `src/data.js`
 - [ ] (Monthly) Update `VEGAS_PROJECTIONS` with latest odds
 
+## Daily Standings Automation (GitHub Actions)
+
+`.github/workflows/update-standings.yml` runs `scripts/update-standings.mjs` to
+fetch NBA standings from ESPN and commit them to `src/historicStandings.js`
+(these are the `Update daily standings for YYYY-MM-DD` commits).
+
+**Status: DISABLED in the offseason.** The daily `schedule:` cron is commented
+out because the regular season is over and the final standings are frozen.
+Leaving it on produced failure emails (the script `exit 1`s on transient ESPN
+hiccups) and would otherwise append unwanted standings.
+
+`workflow_dispatch` is still enabled, so you can trigger a run manually from the
+GitHub Actions tab at any time.
+
+### Re-enabling for next season (e.g. NBA Bet 2027)
+
+1. In `.github/workflows/update-standings.yml`, **uncomment** the `schedule:`
+   block (the `cron: '0 10 * * *'` line) under `on:`.
+2. Commit and push to the **default branch** — GitHub Actions only reads
+   schedules from the default branch, so the cron has no effect until it lands
+   on `main`.
+
+That's the only change required. The script hardcodes the 30 NBA team names and
+requires exactly 15 teams per conference, so it works as-is for any normal
+season.
+
 ## Deployment
 
 To deploy this app:
