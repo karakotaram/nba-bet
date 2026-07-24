@@ -1,15 +1,15 @@
 {
   "files": {
-    "main.css": "/nba-bet/static/css/main.41cce50d.css",
-    "main.js": "/nba-bet/static/js/main.516e0f5e.js",
+    "main.css": "/nba-bet/static/css/main.19e9de83.css",
+    "main.js": "/nba-bet/static/js/main.2c8463c8.js",
     "static/js/453.a3707d7b.chunk.js": "/nba-bet/static/js/453.a3707d7b.chunk.js",
     "index.html": "/nba-bet/index.html",
-    "main.41cce50d.css.map": "/nba-bet/static/css/main.41cce50d.css.map",
-    "main.516e0f5e.js.map": "/nba-bet/static/js/main.516e0f5e.js.map",
+    "main.19e9de83.css.map": "/nba-bet/static/css/main.19e9de83.css.map",
+    "main.2c8463c8.js.map": "/nba-bet/static/js/main.2c8463c8.js.map",
     "453.a3707d7b.chunk.js.map": "/nba-bet/static/js/453.a3707d7b.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.41cce50d.css",
-    "static/js/main.516e0f5e.js"
+    "static/css/main.19e9de83.css",
+    "static/js/main.2c8463c8.js"
   ]
 }
