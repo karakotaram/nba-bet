@@ -1,4 +1,5 @@
 // Draft Results - Update this once per season
+// Each player's array is in draft-round order (index 0 = Round 1, ..., index 9 = Round 10).
 export const DRAFT = {
   Chris: [
     "Cavaliers", "Knicks", "Timberwolves", "Bucks", "Hawks",
@@ -13,6 +14,18 @@ export const DRAFT = {
     "Pistons", "Raptors", "Heat", "Hornets", "Nets"
   ]
 };
+
+// Teams KEPT from the prior season (highlighted yellow in the source spreadsheet).
+// 2026: Chris kept the Knicks, Karan kept the Thunder, Ian kept the Rockets.
+// Team names are unique across the draft, so a flat list is unambiguous.
+export const KEPT_TEAMS = ["Knicks", "Thunder", "Rockets"];
+
+// Keeper rules for the annual draft (from the league spreadsheet).
+export const KEEPER_RULES = [
+  "Can't keep any team in the first three rounds.",
+  "Forfeit your pick one round earlier for each year a team is kept.",
+  "Forfeit your pick two rounds earlier if you keep last year's keeper."
+];
 
 // Vegas Projected Win Totals (2025-26 Consensus)
 // UPDATE THESE MANUALLY: Sources: BetOnline, Gambling911
@@ -98,7 +111,8 @@ export const LEAGUE_HISTORY = [
   { year: 2022, first: "Ian", second: "Karan", third: "Chris" },
   { year: 2023, first: "Karan", second: "Chris", third: "Ian" },
   { year: 2024, first: "Karan", second: "Chris", third: "Ian" },
-  { year: 2025, first: "Karan", second: "Ian", third: "Chris" }
+  { year: 2025, first: "Karan", second: "Ian", third: "Chris" },
+  { year: 2026, first: "Chris", second: "Karan", third: "Ian" }
 ];
 
 // Fallback standings if API fails

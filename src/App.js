@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Trophy, TrendingUp, Calendar, AlertCircle, ArrowUp, Info, RefreshCw } from 'lucide-react';
+import { Trophy, TrendingUp, Calendar, AlertCircle, ArrowUp, Info, RefreshCw, ClipboardList, Star, Lock } from 'lucide-react';
 import { getPlayoffResults } from './api';
-import { DRAFT, VEGAS_PROJECTIONS, LEAGUE_HISTORY, NBA_CUP_RESULTS, PLAYOFF_RESULTS, normalize } from './data';
+import { DRAFT, VEGAS_PROJECTIONS, LEAGUE_HISTORY, NBA_CUP_RESULTS, PLAYOFF_RESULTS, KEPT_TEAMS, KEEPER_RULES, normalize } from './data';
 import { DAILY_STANDINGS, FINAL_REGULAR_SEASON_STANDINGS, REGULAR_SEASON_END_DATE } from './historicStandings';
 import { calculateScoresFromStandings } from './scoring';
 import Simulator from './Simulator';
@@ -46,6 +46,9 @@ const TeamRow = ({ teamName, points, record, rank, draftPosition, relativeToExpe
     </div>
   );
 };
+
+// Normalized lookup of teams kept from the prior season, for the Draft board.
+const KEPT_SET = new Set(KEPT_TEAMS.map(normalize));
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -270,7 +273,7 @@ export default function App() {
 
         {/* Tabs */}
         <div className="flex gap-2 border-b border-slate-800">
-          {['overview', 'teams', 'projections', 'simulator', 'history'].map(tab => (
+          {['overview', 'teams', 'draft', 'projections', 'simulator', 'history'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -415,6 +418,78 @@ export default function App() {
                 </div>
               </Card>
             ))}
+          </div>
+        )}
+
+        {activeTab === 'draft' && (
+          <div className="space-y-6 animate-in fade-in duration-500">
+            {/* Draft Board */}
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <ClipboardList className="w-5 h-5 text-blue-400" />
+                  2026 Draft Board
+                </h3>
+                <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs">
+                  <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> Kept from last year
+                </span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[520px]">
+                  <thead>
+                    <tr className="text-slate-400 text-xs uppercase tracking-wider border-b border-slate-700">
+                      <th className="pb-3 w-12 text-center">Rd</th>
+                      {['Chris', 'Ian', 'Karan'].map(player => (
+                        <th key={player} className="pb-3 px-3">{player}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="text-sm">
+                    {Array.from({ length: 10 }, (_, i) => i).map(round => (
+                      <tr key={round} className="border-b border-slate-700/40 last:border-0">
+                        <td className="py-1.5 text-center align-middle">
+                          <span className="text-xs font-mono text-slate-500">{round + 1}</span>
+                        </td>
+                        {['Chris', 'Ian', 'Karan'].map(player => {
+                          const team = DRAFT[player][round];
+                          const kept = KEPT_SET.has(normalize(team));
+                          return (
+                            <td key={player} className="py-1.5 px-3">
+                              <div className={`flex items-center justify-between gap-2 rounded-md px-3 py-2 border transition-colors ${kept ? 'bg-amber-500/10 border-amber-500/40' : 'bg-slate-800/40 border-slate-700/50'}`}>
+                                <span className={`font-medium ${kept ? 'text-amber-200' : 'text-slate-200'}`}>{team}</span>
+                                {kept && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-amber-400 shrink-0">
+                                    <Star className="w-3 h-3 fill-amber-400" /> Kept
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+
+            {/* Keeper Rules */}
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <Lock className="w-5 h-5 text-purple-400" />
+                Keeper Rules
+              </h3>
+              <ul className="space-y-3">
+                {KEEPER_RULES.map((rule, idx) => (
+                  <li key={idx} className="flex items-start gap-3 text-sm text-slate-300">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-purple-500/20 text-xs font-bold text-purple-300">
+                      {idx + 1}
+                    </span>
+                    <span>{rule}</span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
           </div>
         )}
 

@@ -11,6 +11,10 @@
 # production
 /build
 
+# source spreadsheet (local reference only) + Excel lock files
+*.xlsx
+~$*
+
 # misc
 .DS_Store
 .env.local
