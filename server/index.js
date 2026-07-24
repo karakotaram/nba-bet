@@ -9,6 +9,8 @@
 const express = require('express');
 const http = require('http');
 const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
 const { Server } = require('socket.io');
 
 const PORT = process.env.PORT || 4000;
@@ -23,11 +25,19 @@ const ORIGINS = (
 
 const PLAYERS = ['Chris', 'Ian', 'Karan'];
 const PICK_SECONDS_DEFAULT = 90;
+// Where a submitted draft is persisted. Point DATA_DIR at a Railway volume for
+// durability across redeploys; otherwise it lives in the container FS.
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
+const RESULT_FILE = path.join(DATA_DIR, 'draft-2027.json');
 
 const app = express();
 app.use(cors({ origin: ORIGINS }));
 app.get('/', (_req, res) => res.send('NBA Bet draft server OK'));
-app.get('/health', (_req, res) => res.json({ ok: true, phase: room.phase }));
+app.get('/health', (_req, res) => res.json({ ok: true, phase: room.phase, saved: !!savedResult }));
+// The most recently submitted draft (used to feed the season tracker).
+app.get('/result', (_req, res) =>
+  savedResult ? res.json(savedResult) : res.status(404).json({ error: 'no draft submitted yet' })
+);
 
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: ORIGINS, methods: ['GET', 'POST'] } });
@@ -43,10 +53,31 @@ function freshRoom() {
     currentIndex: -1,
     pickSeconds: PICK_SECONDS_DEFAULT,
     deadline: null, // ms timestamp the current pick expires
+    saved: false, // whether this completed draft has been submitted
   };
 }
 let room = freshRoom();
 let timer = null;
+
+// --- submitted-result persistence -----------------------------------------
+function loadSavedResult() {
+  try {
+    return JSON.parse(fs.readFileSync(RESULT_FILE, 'utf8'));
+  } catch (e) {
+    return null;
+  }
+}
+function persistResult(result) {
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(RESULT_FILE, JSON.stringify(result, null, 2));
+    return true;
+  } catch (e) {
+    console.warn('Failed to persist draft result:', e.message);
+    return false;
+  }
+}
+let savedResult = loadSavedResult();
 
 const norm = s => (s || '').toLowerCase();
 
@@ -70,6 +101,7 @@ function publicState() {
     currentIndex: room.currentIndex,
     pickSeconds: room.pickSeconds,
     deadline: room.deadline,
+    saved: room.saved,
   };
 }
 const broadcast = () => io.emit('state', publicState());
@@ -169,6 +201,33 @@ io.on('connection', socket => {
     room.phase = 'drafting';
     room.currentIndex = nextOpenIndex(room.slots);
     startTimer();
+    broadcast();
+  });
+
+  // Save the completed draft durably so it can feed the season tracker.
+  socket.on('submitDraft', () => {
+    if (room.phase !== 'done') return;
+    const rosters = {};
+    PLAYERS.forEach(p => { rosters[p] = []; });
+    [...room.slots]
+      .sort((a, b) => a.round - b.round)
+      .forEach(s => {
+        if (s.team && rosters[s.player]) rosters[s.player].push({ team: s.team, round: s.round, keeper: !!s.keeper });
+      });
+    const result = {
+      season: 2027,
+      order: room.order,
+      rosters,
+      slots: room.slots,
+      savedAt: new Date().toISOString(),
+    };
+    // Only report success if the durable write actually landed.
+    if (!persistResult(result)) {
+      socket.emit('submitError', { message: 'Could not save the draft to disk. Please try again.' });
+      return;
+    }
+    savedResult = result;
+    room.saved = true;
     broadcast();
   });
 

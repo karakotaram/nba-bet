@@ -3,6 +3,9 @@
 # dependencies
 /node_modules
 server/node_modules
+
+# runtime draft data (submitted results)
+server/data/
 /.pnp
 .pnp.js
 

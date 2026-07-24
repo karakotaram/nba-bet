@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
-import { User, Clock, Undo2, RotateCcw, Play, ChevronUp, ChevronDown, Star, Wifi, WifiOff, Trophy, LogOut } from 'lucide-react';
+import { User, Clock, Undo2, RotateCcw, Play, ChevronUp, ChevronDown, Star, Wifi, WifiOff, Trophy, LogOut, Save, Check } from 'lucide-react';
 import { normalize } from './data';
 import { DRAFT_SERVER_URL, DRAFT_SERVER_CONFIGURED } from './draftServer';
 import {
@@ -15,6 +15,7 @@ export default function LiveDraftRoom() {
   const [state, setState] = useState(null);
   const [mySeat, setMySeat] = useState(null);
   const [now, setNow] = useState(Date.now());
+  const [submitError, setSubmitError] = useState(null);
   const socketRef = useRef(null);
 
   // Local lobby setup (whoever starts sends their config to the server).
@@ -28,7 +29,8 @@ export default function LiveDraftRoom() {
     socketRef.current = socket;
     socket.on('connect', () => setConnected(true));
     socket.on('disconnect', () => setConnected(false));
-    socket.on('state', s => setState(s));
+    socket.on('state', s => { setState(s); if (s.saved) setSubmitError(null); });
+    socket.on('submitError', e => setSubmitError((e && e.message) || 'Save failed'));
     return () => socket.disconnect();
   }, []);
 
@@ -222,12 +224,29 @@ export default function LiveDraftRoom() {
     [...state.slots].sort((a, b) => a.round - b.round).forEach(s => { if (s.team) rosters[s.player].push(s); });
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2"><Trophy className="w-5 h-5 text-yellow-400" /><h3 className="text-lg font-semibold">Draft Complete</h3></div>
-          <button onClick={() => emit('resetRoom')} className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg">
-            <RotateCcw className="w-3 h-3" /> New draft
-          </button>
+          <div className="flex items-center gap-2">
+            {state.saved ? (
+              <span className="flex items-center gap-1.5 px-3 py-2 text-sm text-emerald-300 bg-emerald-500/10 border border-emerald-500/40 rounded-lg">
+                <Check className="w-4 h-4" /> Saved
+              </span>
+            ) : (
+              <button onClick={() => { setSubmitError(null); emit('submitDraft'); }} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 rounded-lg">
+                <Save className="w-4 h-4" /> Submit draft
+              </button>
+            )}
+            <button onClick={() => emit('resetRoom')} className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg">
+              <RotateCcw className="w-3 h-3" /> New draft
+            </button>
+          </div>
         </div>
+        {state.saved && (
+          <p className="text-xs text-emerald-400/80">Results saved to the server — they can be pulled into the season tracker.</p>
+        )}
+        {submitError && !state.saved && (
+          <p className="text-xs text-red-400">{submitError} — nothing was saved.</p>
+        )}
         <div className="grid md:grid-cols-3 gap-4">
           {state.order.map(p => (
             <div key={p} className="rounded-lg border border-slate-700 bg-slate-800/40 p-4">
