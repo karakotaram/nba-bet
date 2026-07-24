@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Trophy, TrendingUp, Calendar, AlertCircle, ArrowUp, Info, RefreshCw, ClipboardList, Star, Lock } from 'lucide-react';
+import { Trophy, TrendingUp, Calendar, AlertCircle, ArrowUp, Info, RefreshCw, ClipboardList, Star, Lock, Medal } from 'lucide-react';
 import { getPlayoffResults } from './api';
 import { DRAFT, VEGAS_PROJECTIONS, LEAGUE_HISTORY, NBA_CUP_RESULTS, PLAYOFF_RESULTS, KEPT_TEAMS, KEEPER_RULES, normalize } from './data';
 import { DAILY_STANDINGS, FINAL_REGULAR_SEASON_STANDINGS, REGULAR_SEASON_END_DATE } from './historicStandings';
@@ -216,6 +216,16 @@ export default function App() {
     // Sort by difference (biggest overperformers first)
     return teams.sort((a, b) => b.diff - a.diff);
   }, [standings]);
+
+  // --- LOGIC: ALL-TIME LEAGUE STANDINGS (3/2/1 pts for 1st/2nd/3rd finish) ---
+  const leagueStats = useMemo(() => {
+    return ['Karan', 'Chris', 'Ian'].map(player => {
+      const first = LEAGUE_HISTORY.filter(y => y.first === player).length;
+      const second = LEAGUE_HISTORY.filter(y => y.second === player).length;
+      const third = LEAGUE_HISTORY.filter(y => y.third === player).length;
+      return { player, first, second, third, points: first * 3 + second * 2 + third };
+    }).sort((a, b) => b.points - a.points || b.first - a.first);
+  }, []);
 
   const sortedLeaders = Object.entries(scoreData.scores).sort(([, a], [, b]) => b - a);
 
@@ -604,67 +614,101 @@ export default function App() {
                 <h3 className="text-lg font-semibold">League History</h3>
               </div>
 
-              <div className="space-y-4">
-                {/* Championship Summary */}
-                <div className="grid grid-cols-3 gap-4 mb-6 p-4 bg-slate-800/50 rounded-lg border border-slate-700/50">
-                  {['Karan', 'Chris', 'Ian'].map(player => {
-                    const championships = LEAGUE_HISTORY.filter(y => y.first === player).length;
-                    const secondPlace = LEAGUE_HISTORY.filter(y => y.second === player).length;
-                    const thirdPlace = LEAGUE_HISTORY.filter(y => y.third === player).length;
-
-                    return (
-                      <div key={player} className="text-center">
-                        <div className="text-sm text-slate-400 mb-2">{player}</div>
-                        <div className="flex items-center justify-center gap-2">
-                          {championships > 0 && (
-                            <div className="flex items-center gap-1">
-                              <Trophy className="w-4 h-4 text-yellow-400" />
-                              <span className="text-lg font-bold text-yellow-400">{championships}</span>
-                            </div>
-                          )}
-                          {secondPlace > 0 && (
-                            <span className="text-sm text-slate-400">
-                              <span className="font-semibold text-slate-300">{secondPlace}</span> 2nd
-                            </span>
-                          )}
-                          {thirdPlace > 0 && (
-                            <span className="text-sm text-slate-400">
-                              <span className="font-semibold text-slate-300">{thirdPlace}</span> 3rd
-                            </span>
-                          )}
+              <div className="space-y-8">
+                {/* Podium finishes per player — one clear medal count per place */}
+                <div>
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Podium Finishes</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {leagueStats.map(({ player, first, second, third }) => (
+                      <div key={player} className="p-4 bg-slate-800/50 rounded-lg border border-slate-700/50">
+                        <div className="text-sm font-semibold text-slate-200 text-center mb-3">{player}</div>
+                        <div className="grid grid-cols-3 divide-x divide-slate-700/50">
+                          <div className="flex flex-col items-center gap-1 px-1">
+                            <Trophy className="w-4 h-4 text-yellow-400" />
+                            <span className="text-2xl font-bold text-yellow-400 leading-none">{first}</span>
+                            <span className="text-[10px] uppercase tracking-wide text-slate-500">1st</span>
+                          </div>
+                          <div className="flex flex-col items-center gap-1 px-1">
+                            <Medal className="w-4 h-4 text-slate-300" />
+                            <span className="text-2xl font-bold text-slate-200 leading-none">{second}</span>
+                            <span className="text-[10px] uppercase tracking-wide text-slate-500">2nd</span>
+                          </div>
+                          <div className="flex flex-col items-center gap-1 px-1">
+                            <Medal className="w-4 h-4 text-amber-600" />
+                            <span className="text-2xl font-bold text-amber-500 leading-none">{third}</span>
+                            <span className="text-[10px] uppercase tracking-wide text-slate-500">3rd</span>
+                          </div>
                         </div>
                       </div>
-                    );
-                  })}
+                    ))}
+                  </div>
+                </div>
+
+                {/* All-time points — 3 for 1st, 2 for 2nd, 1 for 3rd */}
+                <div>
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 flex flex-wrap items-center gap-x-2">
+                    All-Time Points
+                    <span className="normal-case tracking-normal font-normal text-slate-500">— 3 for 1st, 2 for 2nd, 1 for 3rd</span>
+                  </h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="text-slate-400 text-xs uppercase tracking-wider border-b border-slate-700">
+                          <th className="pb-3 pl-4 w-10">#</th>
+                          <th className="pb-3">Player</th>
+                          <th className="pb-3 text-center">1st</th>
+                          <th className="pb-3 text-center">2nd</th>
+                          <th className="pb-3 text-center">3rd</th>
+                          <th className="pb-3 text-right pr-4">Points</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-sm">
+                        {leagueStats.map((s, idx) => (
+                          <tr key={s.player} className={`border-b border-slate-700/50 last:border-0 hover:bg-slate-800/50 ${idx === 0 ? 'bg-yellow-500/5' : ''}`}>
+                            <td className="py-4 pl-4 font-mono text-slate-500">{idx + 1}</td>
+                            <td className="py-4 font-medium">
+                              <div className="flex items-center gap-2">
+                                {idx === 0 && <Trophy className="w-4 h-4 text-yellow-400" />}
+                                <span className={idx === 0 ? 'text-white' : 'text-slate-200'}>{s.player}</span>
+                              </div>
+                            </td>
+                            <td className="py-4 text-center text-yellow-400 font-semibold">{s.first}</td>
+                            <td className="py-4 text-center text-slate-300">{s.second}</td>
+                            <td className="py-4 text-center text-amber-500">{s.third}</td>
+                            <td className="py-4 text-right pr-4"><span className="text-white font-bold text-lg">{s.points}</span></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
 
                 {/* Year-by-year results */}
-                <div className="space-y-2">
-                  {[...LEAGUE_HISTORY].reverse().map((year) => (
-                    <div key={year.year} className="flex items-center justify-between p-4 bg-slate-800/30 rounded-lg border border-slate-700/50 hover:bg-slate-800/50 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <span className="text-lg font-bold text-slate-300 w-16">{year.year}</span>
-                        <div className="flex items-center gap-6">
-                          <div className="flex items-center gap-2">
-                            <Trophy className="w-5 h-5 text-yellow-400" />
-                            <span className="font-semibold text-white">{year.first}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="w-5 h-5 flex items-center justify-center">
-                              <span className="text-xs font-bold text-slate-400">2nd</span>
+                <div>
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Season Results</h4>
+                  <div className="space-y-2">
+                    {[...LEAGUE_HISTORY].reverse().map((year) => (
+                      <div key={year.year} className="flex items-center justify-between p-4 bg-slate-800/30 rounded-lg border border-slate-700/50 hover:bg-slate-800/50 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <span className="text-lg font-bold text-slate-300 w-16">{year.year}</span>
+                          <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <Trophy className="w-5 h-5 text-yellow-400" />
+                              <span className="font-semibold text-white">{year.first}</span>
                             </div>
-                            <span className="text-slate-300">{year.second}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="w-5 h-5 flex items-center justify-center">
-                              <span className="text-xs font-bold text-slate-500">3rd</span>
+                            <div className="flex items-center gap-2">
+                              <Medal className="w-4 h-4 text-slate-300" />
+                              <span className="text-slate-300">{year.second}</span>
                             </div>
-                            <span className="text-slate-400">{year.third}</span>
+                            <div className="flex items-center gap-2">
+                              <Medal className="w-4 h-4 text-amber-600" />
+                              <span className="text-slate-400">{year.third}</span>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
             </Card>
