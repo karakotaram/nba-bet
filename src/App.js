@@ -6,6 +6,19 @@ import { DRAFT, VEGAS_PROJECTIONS, LEAGUE_HISTORY, NBA_CUP_RESULTS, PLAYOFF_RESU
 import { DAILY_STANDINGS, FINAL_REGULAR_SEASON_STANDINGS, REGULAR_SEASON_END_DATE } from './historicStandings';
 import { calculateScoresFromStandings } from './scoring';
 import Simulator from './Simulator';
+import Draft2027 from './Draft2027';
+
+// Tab keys + display labels (labels can't be derived from keys once we have
+// "2026 Draft" / "2027 Draft").
+const TABS = [
+  { key: 'overview', label: 'Overview' },
+  { key: 'teams', label: 'Teams' },
+  { key: 'draft2026', label: '2026 Draft' },
+  { key: 'draft2027', label: '2027 Draft' },
+  { key: 'projections', label: 'Projections' },
+  { key: 'simulator', label: 'Simulator' },
+  { key: 'history', label: 'History' },
+];
 
 const Card = ({ children, className = "" }) => (
   <div className={`bg-slate-800 border border-slate-700 rounded-xl shadow-lg overflow-hidden ${className}`}>
@@ -282,16 +295,16 @@ export default function App() {
         </section>
 
         {/* Tabs */}
-        <div className="flex gap-2 border-b border-slate-800">
-          {['overview', 'teams', 'draft', 'projections', 'simulator', 'history'].map(tab => (
+        <div className="flex gap-2 border-b border-slate-800 overflow-x-auto">
+          {TABS.map(({ key, label }) => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 text-sm font-medium capitalize transition-colors relative ${activeTab === tab ? 'text-blue-400' : 'text-slate-400 hover:text-slate-200'
+              key={key}
+              onClick={() => setActiveTab(key)}
+              className={`px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors relative ${activeTab === key ? 'text-blue-400' : 'text-slate-400 hover:text-slate-200'
                 }`}
             >
-              {tab}
-              {activeTab === tab && (
+              {label}
+              {activeTab === key && (
                 <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-500 rounded-t-full" />
               )}
             </button>
@@ -431,7 +444,7 @@ export default function App() {
           </div>
         )}
 
-        {activeTab === 'draft' && (
+        {activeTab === 'draft2026' && (
           <div className="space-y-6 animate-in fade-in duration-500">
             {/* Draft Board */}
             <Card className="p-6">
@@ -502,6 +515,8 @@ export default function App() {
             </Card>
           </div>
         )}
+
+        {activeTab === 'draft2027' && <Draft2027 />}
 
         {activeTab === 'projections' && (
           <div className="space-y-6 animate-in fade-in duration-500">
