@@ -99,9 +99,18 @@ export const NBA_CUP_RESULTS = {
 export const PLAYOFF_RESULTS = {
   // Track series wins per team
   // e.g., { "Thunder": 3, "Celtics": 2 } means Thunder won 3 series, Celtics won 2
-  seriesWins: {},
+  seriesWins: {
+    "Knicks": 4,
+    "Spurs": 3,
+    "Cavaliers": 2,
+    "Thunder": 2,
+    "Lakers": 1,
+    "Timberwolves": 1,
+    "76ers": 1,
+    "Pistons": 1
+  },
   // Finals champion gets bonus 12 points
-  finalsChampion: null
+  finalsChampion: "Knicks"
 };
 
 // League History - Past Winners
