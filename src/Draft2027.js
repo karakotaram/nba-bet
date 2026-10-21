@@ -13,6 +13,8 @@ const Card = ({ children, className = '' }) => (
 );
 
 // Landing screen for the 2027 draft: choose a live room or a solo mock draft.
+// Not currently rendered — the 2027 draft is done. Kept for next year; see the
+// note at the top of draftEngine.js for what to re-point before reusing it.
 export default function Draft2027() {
   const [mode, setMode] = useState('landing'); // 'landing' | 'mock' | 'live'
 

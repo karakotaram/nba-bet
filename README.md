@@ -1,6 +1,6 @@
-# NBA Bet 2026 - Tracker
+# NBA Bet 2027 - Tracker
 
-A React app to track your NBA fantasy league standings throughout the 2025-26 season.
+A React app to track your NBA fantasy league standings throughout the 2026-27 season.
 
 ## Features
 
@@ -159,15 +159,21 @@ src/
 fetch NBA standings from ESPN and commit them to `src/historicStandings.js`
 (these are the `Update daily standings for YYYY-MM-DD` commits).
 
-**Status: DISABLED in the offseason.** The daily `schedule:` cron is commented
-out because the regular season is over and the final standings are frozen.
-Leaving it on produced failure emails (the script `exit 1`s on transient ESPN
-hiccups) and would otherwise append unwanted standings.
+**Status: ENABLED for the 2026-27 season** (re-enabled Oct 21, 2026). The
+2025-26 daily standings are archived in `src/historicStandings2026.js`.
 
-`workflow_dispatch` is still enabled, so you can trigger a run manually from the
-GitHub Actions tab at any time.
+When the regular season ends, disable it again: comment out the `schedule:`
+block, since leaving it on produces failure emails (the script `exit 1`s on
+transient ESPN hiccups) and appends unwanted standings.
 
-### Re-enabling for next season (e.g. NBA Bet 2027)
+`workflow_dispatch` is always enabled, so you can trigger a run manually from
+the GitHub Actions tab at any time.
+
+### Re-enabling for next season (e.g. NBA Bet 2028)
+
+0. Archive the season: rename `src/historicStandings.js` to
+   `src/historicStandings<YEAR>.js` and start a new one containing an empty
+   `export const DAILY_STANDINGS = {\n};` (the script fills in the first day).
 
 1. In `.github/workflows/update-standings.yml`, **uncomment** the `schedule:`
    block (the `cron: '0 10 * * *'` line) under `on:`.

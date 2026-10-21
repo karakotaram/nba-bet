@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-NBA Bet 2026 is a React app that tracks a fantasy basketball league where 3 players (Chris, Ian, Karan) draft NBA teams and earn points based on conference standings. Points are calculated as `16 - conference_rank` (15 pts for 1st seed, 1 pt for 15th seed). The worst team overall gets a +3 bonus.
+NBA Bet 2027 (2026-27 NBA season) is a React app that tracks a fantasy basketball league where 3 players (Chris, Ian, Karan) draft NBA teams and earn points based on conference standings. Points are calculated as `16 - conference_rank` (15 pts for 1st seed, 1 pt for 15th seed). The worst team overall gets a +3 bonus.
 
 ## Commands
 
@@ -20,12 +20,13 @@ npm test           # Run tests with Jest
 ### Data Flow
 1. **Live standings**: `api.js` fetches from ESPN API (`site.api.espn.com/apis/v2/sports/basketball/nba/standings`), cached 1 hour in localStorage
 2. **Vegas projections**: Manual updates in `VEGAS_PROJECTIONS` object in `data.js`
-3. **Historic tracking**: Daily standings stored in `historicStandings.js`, plus auto-saved to localStorage on each refresh
+3. **Historic tracking**: Daily standings appended to `historicStandings.js` by a GitHub Actions cron (`scripts/update-standings.mjs`); past seasons are archived as `historicStandings<YEAR>.js`
 
 ### Key Files
 
 - **`src/data.js`** - Configuration hub:
-  - `DRAFT` - Which teams each player drafted
+  - `DRAFT` / `DRAFT_ORDER` / `KEPT_TEAMS` - Current season's draft (round order), round-1 snake order, and keepers
+  - `DRAFT_2026` / `KEPT_TEAMS_2026` - Archived 2026 draft (2026 Draft tab + keeper anchor for the dormant draft rooms)
   - `VEGAS_PROJECTIONS` - Win total odds (update from FanDuel/Covers/SportsBettingDime)
   - `NBA_CUP_RESULTS` - NBA Cup semifinalists, runner-up, and champion
   - `PLAYOFF_RESULTS` - Playoff series wins and finals champion
@@ -35,10 +36,12 @@ npm test           # Run tests with Jest
 
 - **`src/api.js`** - ESPN API integration with caching
 - **`src/historicStandings.js`** - `DAILY_STANDINGS` object keyed by date (YYYY-MM-DD format)
-- **`src/App.js`** - Main React component with scoring logic in `calculateScoresFromStandings()`
+- **`src/App.js`** - Main React component; scoring logic is `calculateScoresFromStandings()` in `src/scoring.js`
+- **`src/DraftBoard.js`** - Draft board + keeper rules cards for the 2027/2026 Draft tabs
+- **`src/Draft2027.js`, `MockDraftRoom.js`, `LiveDraftRoom.js`, `draftEngine.js`** - Mock/live draft rooms, not linked from the UI since the 2027 draft is done; see the note atop `draftEngine.js` to reuse them
 
 ### Scoring Calculation
-The scoring logic in `App.js:115-240` calculates points per team:
+The scoring logic in `src/scoring.js` calculates points per team:
 - **Regular Season**: `16 - conference_rank` (15 pts for 1st seed, 1 pt for 15th seed)
 - **Last Place Bonus**: +3 for the worst overall record
 - **NBA Cup**: +1 for semifinalists (not advancing), +2 for runner-up, +4 for champion (exclusive, not cumulative)

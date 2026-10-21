@@ -23,7 +23,8 @@ export function calculateScoresFromStandings(standingsData, playoffResults = { s
   let worstTeam = null;
   let worstWinPct = 1.0;
   [...standingsData.East, ...standingsData.West].forEach(team => {
-    const winPct = team.w / (team.w + team.l || 1);
+    // Teams yet to play count as .500 so a 0-0 team can't be "worst" on opening night.
+    const winPct = team.w + team.l ? team.w / (team.w + team.l) : 0.5;
     if (winPct < worstWinPct) {
       worstWinPct = winPct;
       worstTeam = normalize(team.team);

@@ -83,11 +83,10 @@ async function fetchESPNStandings() {
     }
   });
 
-  const sortByWinPct = (a, b) => {
-    const pctA = a.w / (a.w + a.l || 1);
-    const pctB = b.w / (b.w + b.l || 1);
-    return pctB - pctA;
-  };
+  // A team that hasn't played yet counts as .500, not .000, so it isn't ranked
+  // below winless teams in the first days of the season.
+  const winPct = t => (t.w + t.l ? t.w / (t.w + t.l) : 0.5);
+  const sortByWinPct = (a, b) => winPct(b) - winPct(a);
 
   eastStandings.sort(sortByWinPct);
   westStandings.sort(sortByWinPct);
@@ -141,14 +140,20 @@ async function main() {
     process.exit(0);
   }
 
-  // Insert new entry before the closing `};`
-  const newEntry = formatStandingsEntry(today, standings);
-  const updated = content.replace(/\n\};[\s]*$/, `,\n\n${newEntry}\n};\n`);
+  // Insert new entry before the `};` that closes DAILY_STANDINGS (other exports
+  // may follow it, and the object is empty on the first day of a season).
+  const OPEN = 'export const DAILY_STANDINGS = {';
+  const start = content.indexOf(OPEN);
+  const close = start === -1 ? -1 : content.indexOf('\n};', start);
 
-  if (updated === content) {
+  if (close === -1) {
     console.error('Failed to find insertion point in historicStandings.js');
     process.exit(1);
   }
+
+  const isEmpty = content.slice(start + OPEN.length, close).trim() === '';
+  const newEntry = formatStandingsEntry(today, standings);
+  const updated = content.slice(0, close) + (isEmpty ? '\n' : ',\n\n') + newEntry + content.slice(close);
 
   writeFileSync(STANDINGS_FILE, updated);
   console.log(`Added ${today} to historicStandings.js`);

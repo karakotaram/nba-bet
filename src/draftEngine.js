@@ -11,9 +11,16 @@
 //   - A keeper is only legal if that cost round is >= MIN_KEEPER_ROUND (3);
 //     rounds 1-2 can't be used to keep. (So Rockets R5 -> R3 legal; Knicks/
 //     Thunder R2 -> R0 illegal.)
+//
+// The rooms are no longer linked from the app (the 2027 draft is done) but are
+// kept for next year. To reuse them for the 2028 draft, re-point the anchor:
+//   - DRAFT_2026 / KEPT_TEAMS_2026 -> the 2027 draft (DRAFT / KEPT_TEAMS in data.js)
+//   - historicStandings2026        -> the frozen 2026-27 final standings
+//   - DEFAULT_ORDER_2027           -> the 2028 round-1 order
+// then render <Draft2027 /> from a tab in App.js again.
 
-import { DRAFT, KEPT_TEAMS, VEGAS_PROJECTIONS, normalize } from './data';
-import { FINAL_REGULAR_SEASON_STANDINGS } from './historicStandings';
+import { DRAFT_2026 as DRAFT, KEPT_TEAMS_2026 as KEPT_TEAMS, VEGAS_PROJECTIONS, normalize } from './data';
+import { FINAL_REGULAR_SEASON_STANDINGS } from './historicStandings2026';
 
 export const PLAYERS = ['Chris', 'Ian', 'Karan'];
 export const ROUNDS = 10;
@@ -179,6 +186,6 @@ export function cpuPick(pool, slots, rng = Math.random) {
   return avail[idx].name;
 }
 
-// Convenience: default draft order = reverse of last season's finish (loser
-// picks first). 2026 finish was Chris 1st, Karan 2nd, Ian 3rd.
-export const DEFAULT_ORDER_2027 = ['Ian', 'Karan', 'Chris'];
+// Round-1 order used in the real 2027 draft (Ian, Chris, Karan). The rooms let
+// the commissioner reorder before starting.
+export const DEFAULT_ORDER_2027 = ['Ian', 'Chris', 'Karan'];

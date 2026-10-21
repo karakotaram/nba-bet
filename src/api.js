@@ -149,20 +149,21 @@ function normalizeTeamName(espnName) {
 // Older cached entries lacked this field, so they would re-render in the
 // pre-fix sort order until expiry. Bumping invalidates them immediately.
 const STANDINGS_CACHE_VERSION = 2;
+export const STANDINGS_CACHE_KEY = 'nba_standings_cache';
 
 /**
  * Get cached standings with cache expiration
  * Caches for 1 hour to reduce API calls
  */
 export function getCachedStandings() {
-  const cached = localStorage.getItem('nba_standings_cache');
+  const cached = localStorage.getItem(STANDINGS_CACHE_KEY);
   if (!cached) return null;
 
   try {
     const { data, timestamp, version } = JSON.parse(cached);
     if (version !== STANDINGS_CACHE_VERSION) {
       console.log('🔄 Cache schema changed, ignoring old cache');
-      localStorage.removeItem('nba_standings_cache');
+      localStorage.removeItem(STANDINGS_CACHE_KEY);
       return null;
     }
     const age = Date.now() - timestamp;
@@ -186,7 +187,7 @@ export function getCachedStandings() {
  */
 export function cacheStandings(data) {
   try {
-    localStorage.setItem('nba_standings_cache', JSON.stringify({
+    localStorage.setItem(STANDINGS_CACHE_KEY, JSON.stringify({
       data,
       timestamp: Date.now(),
       version: STANDINGS_CACHE_VERSION
@@ -226,10 +227,11 @@ export async function getStandings() {
  * and tallies series wins. A team "wins" a series at 4 wins.
  * Returns { seriesWins: { Team: count }, finalsChampion: Team|null }
  */
+// The whole 2027 playoff window. ESPN accepts a YYYYMMDD-YYYYMMDD range.
+const PLAYOFF_DATE_RANGE = '20270415-20270630';
+
 export async function fetchPlayoffResults() {
-  // Cover the whole 2026 playoff window. ESPN accepts a YYYYMMDD-YYYYMMDD range.
-  const DATE_RANGE = '20260415-20260630';
-  const url = `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?seasontype=3&dates=${DATE_RANGE}`;
+  const url = `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?seasontype=3&dates=${PLAYOFF_DATE_RANGE}`;
 
   try {
     console.log('🏆 Fetching playoff results from ESPN...');
@@ -296,9 +298,13 @@ export async function fetchPlayoffResults() {
   }
 }
 
-const PLAYOFF_CACHE_KEY = 'nba_playoff_results_cache';
+// Season-scoped so a viewer's cached 2026 playoff results can't leak into 2027 scoring.
+export const PLAYOFF_CACHE_KEY = 'nba_playoff_results_cache_2027';
 
 export async function getPlayoffResults() {
+  // Nothing to fetch before the playoffs start (ESPN 400s on the request).
+  if (formatDate(new Date()) < PLAYOFF_DATE_RANGE.split('-')[0]) return null;
+
   try {
     const cached = localStorage.getItem(PLAYOFF_CACHE_KEY);
     if (cached) {
@@ -393,7 +399,7 @@ export async function fetchStandingsByDate(date) {
  * Starts 7 days after season start and fetches weekly snapshots
  */
 export async function fetchHistoricStandings() {
-  const SEASON_START = new Date('2025-10-22'); // 2025-26 season
+  const SEASON_START = new Date('2026-10-20'); // 2026-27 season
   const FIRST_WEEK = new Date(SEASON_START);
   FIRST_WEEK.setDate(FIRST_WEEK.getDate() + 7); // 7 days after season start
 
