@@ -20,7 +20,7 @@ npm test           # Run tests with Jest
 ### Data Flow
 1. **Live standings**: `api.js` fetches from ESPN API (`site.api.espn.com/apis/v2/sports/basketball/nba/standings`), cached 1 hour in localStorage
 2. **Vegas projections**: Manual updates in `VEGAS_PROJECTIONS` object in `data.js`
-3. **Historic tracking**: Daily standings appended to `historicStandings.js` by a GitHub Actions cron (`scripts/update-standings.mjs`); past seasons are archived as `historicStandings<YEAR>.js`
+3. **Historic tracking**: Daily standings appended to `historicStandings.js` by a GitHub Actions cron (`scripts/update-standings.mjs`), which also triggers the Pages deploy. When the playoffs start it freezes the final regular-season standings (`REGULAR_SEASON_END_DATE`; the app then stops using live standings) and disables itself. Past seasons are archived as `historicStandings<YEAR>.js`
 
 ### Key Files
 
@@ -45,7 +45,7 @@ The scoring logic in `src/scoring.js` calculates points per team:
 - **Regular Season**: `16 - conference_rank` (15 pts for 1st seed, 1 pt for 15th seed)
 - **Last Place Bonus**: +3 for the worst overall record
 - **NBA Cup**: +1 for semifinalists (not advancing), +2 for runner-up, +4 for champion (exclusive, not cumulative)
-- **Playoffs**: +6 per series win, +12 for finals champion
+- **Playoffs**: +6 per series win (first round through conference finals), +12 for the finals champion — the Finals itself is not also a +6 series win. Live results come from each team's ESPN postseason schedule (`fetchPlayoffResults` in `api.js`); `scripts/check-playoff-scoring.mjs` (weekly GitHub Action, daily Apr–Jun) verifies that against the real 2025-26 playoffs
 
 ## Updating Data
 

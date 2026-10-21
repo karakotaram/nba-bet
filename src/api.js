@@ -6,7 +6,7 @@
 // win pct, so a team that loses a play-in game does not get bumped past a team
 // with a worse record. Falls back to pure win pct when no seed is provided
 // (e.g. for historic mid-season snapshots).
-const sortBySeed = (a, b) => {
+export const sortBySeed = (a, b) => {
   const seedA = a.playoffSeed;
   const seedB = b.playoffSeed;
   const isPlayoffA = seedA != null && seedA <= 8;
@@ -221,53 +221,65 @@ export async function getStandings() {
   return null; // Fallback will be used
 }
 
+// Playoffs being tracked: ESPN season year (2027 = the 2026-27 season) and the
+// date the postseason starts (YYYYMMDD; nothing to fetch before it).
+export const PLAYOFF_SEASON = 2027;
+export const PLAYOFF_START = '20270415';
+
+// ESPN's NBA team ids run 1-30.
+const ESPN_TEAM_IDS = Array.from({ length: 30 }, (_, i) => i + 1);
+
 /**
- * Fetch playoff results from ESPN scoreboard.
- * Walks every playoff game, groups by series (round + matchup),
- * and tallies series wins. A team "wins" a series at 4 wins.
+ * Fetch playoff results from each team's ESPN postseason schedule
+ * (seasontype=3, which excludes the play-in). The scoreboard date-range query
+ * this used to rely on (?dates=YYYYMMDD-YYYYMMDD) has returned 400 since
+ * Oct 2026; scripts/check-playoff-scoring.mjs guards against the next change.
+ *
+ * Games are grouped by matchup (two teams meet at most once per postseason),
+ * and a team wins a series at 4 wins. The Finals winner is the champion, and
+ * the Finals is NOT also counted in seriesWins: it scores +12 total, not
+ * +6 + 12 (same rule as Simulator.js).
  * Returns { seriesWins: { Team: count }, finalsChampion: Team|null }
  */
-// The whole 2027 playoff window. ESPN accepts a YYYYMMDD-YYYYMMDD range.
-const PLAYOFF_DATE_RANGE = '20270415-20270630';
-
-export async function fetchPlayoffResults() {
-  const url = `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?seasontype=3&dates=${PLAYOFF_DATE_RANGE}`;
+export async function fetchPlayoffResults(season = PLAYOFF_SEASON) {
+  const base = 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams';
 
   try {
-    console.log('🏆 Fetching playoff results from ESPN...');
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`ESPN API Error: ${response.status}`);
+    console.log(`🏆 Fetching ${season} playoff results from ESPN...`);
+    const schedules = await Promise.all(ESPN_TEAM_IDS.map(async id => {
+      const response = await fetch(`${base}/${id}/schedule?season=${season}&seasontype=3`);
+      if (!response.ok) throw new Error(`ESPN API Error: ${response.status} (team ${id})`);
+      return response.json();
+    }));
 
-    const data = await response.json();
-    const events = data.events || [];
+    // Each game appears in both teams' schedules, so dedupe by event id.
+    const games = new Map();
+    schedules.forEach(schedule => (schedule.events || []).forEach(event => games.set(event.id, event)));
 
-    // series key -> { round, wins: { TeamName: int } }
+    // matchup key -> { round, wins: { TeamName: int } }
     const series = new Map();
 
-    events.forEach(event => {
+    games.forEach(event => {
       const comp = event.competitions?.[0];
-      if (!comp) return;
-
-      const status = event.status?.type?.state;
-      if (status !== 'post') return; // only completed games
+      if (!comp?.status?.type?.completed) return; // only completed games
 
       const headline = comp.notes?.[0]?.headline || '';
       if (!headline || headline.includes('Play-In')) return;
 
       // Headline format: "{Round} - Game {N}", e.g. "East 1st Round - Game 3"
       const round = headline.split(' - Game ')[0].trim();
-      if (!round) return;
 
       const competitors = comp.competitors || [];
-      const teams = competitors.map(c => c.team?.name).filter(Boolean);
+      const teams = competitors.map(c => c.team?.displayName).filter(Boolean).map(normalizeTeamName);
       if (teams.length !== 2) return;
 
-      const winner = competitors.find(c => c.winner)?.team?.name;
-      if (!winner) return;
+      const winnerName = competitors.find(c => c.winner)?.team?.displayName;
+      if (!winnerName) return;
+      const winner = normalizeTeamName(winnerName);
 
-      // Series key is round + sorted matchup so we tolerate home/away order changes
+      // Sorted matchup so we tolerate home/away order changes
       const matchup = [...teams].sort();
-      const key = `${round}|${matchup.join(' vs ')}`;
+      const key = matchup.join(' vs ');
 
       if (!series.has(key)) {
         series.set(key, { round, wins: { [matchup[0]]: 0, [matchup[1]]: 0 } });
@@ -280,12 +292,12 @@ export async function fetchPlayoffResults() {
 
     series.forEach(({ round, wins }) => {
       Object.entries(wins).forEach(([team, count]) => {
-        if (count >= 4) {
+        if (count < 4) return;
+        // "NBA Finals" = championship round (distinct from "East Finals")
+        if (/^NBA Finals$/i.test(round)) {
+          finalsChampion = team;
+        } else {
           seriesWins[team] = (seriesWins[team] || 0) + 1;
-          // "NBA Finals" = championship round (distinct from "Conf Finals")
-          if (/^NBA Finals$/i.test(round)) {
-            finalsChampion = team;
-          }
         }
       });
     });
@@ -302,9 +314,10 @@ export async function fetchPlayoffResults() {
 export const PLAYOFF_CACHE_KEY = 'nba_playoff_results_cache_2027';
 
 export async function getPlayoffResults() {
-  // Nothing to fetch before the playoffs start (ESPN 400s on the request).
-  if (formatDate(new Date()) < PLAYOFF_DATE_RANGE.split('-')[0]) return null;
+  // Nothing to fetch before the playoffs start.
+  if (formatDate(new Date()) < PLAYOFF_START) return null;
 
+  let stale = null;
   try {
     const cached = localStorage.getItem(PLAYOFF_CACHE_KEY);
     if (cached) {
@@ -314,6 +327,7 @@ export async function getPlayoffResults() {
         console.log(`📦 Using cached playoff results (${Math.round(age / 60000)} min old)`);
         return data;
       }
+      stale = data;
     }
   } catch (e) {
     console.warn('Playoff cache parse error:', e);
@@ -326,8 +340,12 @@ export async function getPlayoffResults() {
     } catch (e) {
       console.warn('Playoff cache write error:', e);
     }
+    return fresh;
   }
-  return fresh;
+
+  // One of the 30 team requests failed — keep showing the last results we had.
+  if (stale) console.warn('⚠️  Using expired cached playoff results');
+  return stale;
 }
 
 /**

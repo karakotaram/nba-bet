@@ -155,35 +155,55 @@ src/
 
 ## Daily Standings Automation (GitHub Actions)
 
-`.github/workflows/update-standings.yml` runs `scripts/update-standings.mjs` to
-fetch NBA standings from ESPN and commit them to `src/historicStandings.js`
-(these are the `Update daily standings for YYYY-MM-DD` commits).
+`.github/workflows/update-standings.yml` runs `scripts/update-standings.mjs`
+every morning to fetch NBA standings from ESPN and commit them to
+`src/historicStandings.js` (the `Update daily standings for YYYY-MM-DD`
+commits), then triggers the GitHub Pages deploy so the points chart updates.
+
+It follows ESPN's season calendar, so it turns itself off:
+
+- **Regular season:** one snapshot per day.
+- **Play-in:** no changes (records are final, 7/8 seeds still being decided).
+- **First run after the playoffs start:** rewrites the final regular-season
+  snapshot in official seed order (tiebreakers + play-in 7/8 seeds), sets
+  `REGULAR_SEASON_END_DATE` (the site then scores regular-season points from
+  that frozen snapshot instead of live ESPN standings), and **disables the
+  workflow**.
 
 **Status: ENABLED for the 2026-27 season** (re-enabled Oct 21, 2026). The
 2025-26 daily standings are archived in `src/historicStandings2026.js`.
 
-When the regular season ends, disable it again: comment out the `schedule:`
-block, since leaving it on produces failure emails (the script `exit 1`s on
-transient ESPN hiccups) and appends unwanted standings.
-
-`workflow_dispatch` is always enabled, so you can trigger a run manually from
-the GitHub Actions tab at any time.
+`workflow_dispatch` stays available, so you can trigger a run manually from the
+GitHub Actions tab at any time (it's a no-op outside the regular season).
 
 ### Re-enabling for next season (e.g. NBA Bet 2028)
 
-0. Archive the season: rename `src/historicStandings.js` to
-   `src/historicStandings<YEAR>.js` and start a new one containing an empty
-   `export const DAILY_STANDINGS = {\n};` (the script fills in the first day).
+1. Archive the season: rename `src/historicStandings.js` to
+   `src/historicStandings<YEAR>.js`, and start a new `src/historicStandings.js`
+   with an empty `export const DAILY_STANDINGS = {\n};` followed by the
+   `REGULAR_SEASON_END_DATE = null` / `FINAL_REGULAR_SEASON_STANDINGS` exports
+   (copy them from the archived file and reset the date to `null`). The script
+   fills in the first day.
+2. Push to `main`, then re-enable the workflow: Actions tab → "Update Daily
+   Standings" → **Enable workflow** (or `gh workflow enable update-standings.yml`).
+   Enabling it early is fine; it waits for the regular season to start.
 
-1. In `.github/workflows/update-standings.yml`, **uncomment** the `schedule:`
-   block (the `cron: '0 10 * * *'` line) under `on:`.
-2. Commit and push to the **default branch** — GitHub Actions only reads
-   schedules from the default branch, so the cron has no effect until it lands
-   on `main`.
+If you forget step 1, the first run of the new season fails (and emails you)
+rather than mixing two seasons in one file.
 
-That's the only change required. The script hardcodes the 30 NBA team names and
-requires exactly 15 teams per conference, so it works as-is for any normal
-season.
+## Playoff Scoring Check (GitHub Actions)
+
+`.github/workflows/check-playoff-scoring.yml` runs
+`scripts/check-playoff-scoring.mjs` weekly (Mondays), and daily from April to
+June. It rebuilds the 2025-26 playoffs with the site's own ESPN fetcher and
+compares them with the real results (Knicks champions), so an ESPN API change
+fails the run, and emails you, months before it would cost points. Once the
+playoffs start, it also checks the live bracket math, and the run summary shows
+each player's playoff points.
+
+Note: GitHub pauses scheduled workflows in a repo with no commits for 60 days
+(it emails a warning first). If that happens after the season freezes in
+April, re-enable it from the Actions tab.
 
 ## Deployment
 

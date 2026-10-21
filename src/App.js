@@ -3,7 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Trophy, TrendingUp, Calendar, AlertCircle, ArrowUp, Info, RefreshCw, Medal } from 'lucide-react';
 import { getStandings, getPlayoffResults, STANDINGS_CACHE_KEY, PLAYOFF_CACHE_KEY } from './api';
 import { DRAFT, DRAFT_ORDER, DRAFT_2026, VEGAS_PROJECTIONS, FALLBACK_STANDINGS, LEAGUE_HISTORY, NBA_CUP_RESULTS, PLAYOFF_RESULTS, KEPT_TEAMS, KEPT_TEAMS_2026, normalize } from './data';
-import { DAILY_STANDINGS } from './historicStandings';
+import { DAILY_STANDINGS, REGULAR_SEASON_END_DATE, FINAL_REGULAR_SEASON_STANDINGS } from './historicStandings';
 import { calculateScoresFromStandings } from './scoring';
 import Simulator from './Simulator';
 import { DraftBoard, KeeperRules } from './DraftBoard';
@@ -61,10 +61,16 @@ const TeamRow = ({ teamName, points, record, rank, draftPosition, relativeToExpe
   );
 };
 
+// Once the playoffs start, the daily standings job freezes the final
+// regular-season standings; from then on regular-season points come from that
+// snapshot, since ESPN's live seeds drift as playoff teams are eliminated.
+const SEASON_FROZEN = Boolean(FINAL_REGULAR_SEASON_STANDINGS);
+
 // Until live ESPN standings load, start from the latest daily snapshot
 // (committed by the daily cron), or the static fallback if there is none.
 const LATEST_DAILY_DATE = Object.keys(DAILY_STANDINGS).sort().pop();
-const INITIAL_STANDINGS = LATEST_DAILY_DATE ? DAILY_STANDINGS[LATEST_DAILY_DATE] : FALLBACK_STANDINGS;
+const INITIAL_STANDINGS = FINAL_REGULAR_SEASON_STANDINGS
+  || (LATEST_DAILY_DATE ? DAILY_STANDINGS[LATEST_DAILY_DATE] : FALLBACK_STANDINGS);
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -85,14 +91,17 @@ export default function App() {
         localStorage.removeItem(STANDINGS_CACHE_KEY);
         localStorage.removeItem(PLAYOFF_CACHE_KEY);
       }
-      const [live, playoffs] = await Promise.all([getStandings(), getPlayoffResults()]);
+      const [live, playoffs] = await Promise.all([
+        SEASON_FROZEN ? null : getStandings(),
+        getPlayoffResults(),
+      ]);
       if (live?.East?.length && live?.West?.length) {
         setStandings({ East: live.East, West: live.West });
-        setLastUpdated(new Date());
-      } else {
+      } else if (!SEASON_FROZEN) {
         console.warn('⚠️  App: live standings unavailable, keeping last snapshot');
       }
       if (playoffs) setPlayoffResults(playoffs);
+      if (live || playoffs) setLastUpdated(new Date());
     } catch (error) {
       console.error('❌ App: Failed to refresh standings:', error);
     } finally {
@@ -108,9 +117,11 @@ export default function App() {
   // --- LOGIC: HISTORIC GRAPH DATA (Regular Season Points Only) ---
   const { historyData, totalDaysTracked } = useMemo(() => {
     // One point per daily snapshot, then a live "Now" point from the current
-    // standings. (At season's end, freeze to the final snapshot as was done for
-    // 2025-26 — see historicStandings2026.js — so playoff seeding can't drift it.)
-    const dates = Object.keys(DAILY_STANDINGS).sort();
+    // standings. Once the season is frozen, the line ends on the final
+    // regular-season day instead.
+    const dates = Object.keys(DAILY_STANDINGS)
+      .filter(date => !SEASON_FROZEN || date <= REGULAR_SEASON_END_DATE)
+      .sort();
 
     // Regular season only — no playoff results passed since we only read
     // breakdown.regularSeason.
@@ -126,12 +137,14 @@ export default function App() {
       };
     });
 
-    data.push({
-      week: 'Now',
-      Chris: scoreData.breakdown.Chris.regularSeason,
-      Ian: scoreData.breakdown.Ian.regularSeason,
-      Karan: scoreData.breakdown.Karan.regularSeason,
-    });
+    if (!SEASON_FROZEN) {
+      data.push({
+        week: 'Now',
+        Chris: scoreData.breakdown.Chris.regularSeason,
+        Ian: scoreData.breakdown.Ian.regularSeason,
+        Karan: scoreData.breakdown.Karan.regularSeason,
+      });
+    }
 
     return { historyData: data, totalDaysTracked: dates.length };
   }, [scoreData]);

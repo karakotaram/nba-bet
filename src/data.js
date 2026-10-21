@@ -118,11 +118,12 @@ export const NBA_CUP_RESULTS = {
 };
 
 // Playoffs 2026-27 Results
-// Update these as the playoffs progress
-// Each series win earns 6 points
-// Finals winner gets 12 additional points
+// The site fetches these live from ESPN once the playoffs start (src/api.js);
+// this is only the starting value / manual fallback.
+// Each series win (first round through conference finals) earns 6 points
+// Finals winner gets 12 (the Finals is not also a 6-pt series win)
 export const PLAYOFF_RESULTS = {
-  // Track series wins per team
+  // Track series wins per team (max 3: the Finals isn't counted here)
   // e.g., { "Thunder": 3, "Celtics": 2 } means Thunder won 3 series, Celtics won 2
   seriesWins: {},
   // Finals champion gets bonus 12 points

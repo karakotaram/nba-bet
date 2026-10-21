@@ -42,3 +42,10 @@ export const DAILY_STANDINGS = {
     ]
   }
 };
+
+// Set by scripts/update-standings.mjs once the playoffs start: the date of the
+// final regular-season snapshot (rewritten in official seed order). From then on
+// the site scores regular-season points from FINAL_REGULAR_SEASON_STANDINGS
+// instead of live ESPN standings, whose seeds drift during the playoffs.
+export const REGULAR_SEASON_END_DATE = null;
+export const FINAL_REGULAR_SEASON_STANDINGS = REGULAR_SEASON_END_DATE ? DAILY_STANDINGS[REGULAR_SEASON_END_DATE] : null;
