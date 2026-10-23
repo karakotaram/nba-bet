@@ -77,6 +77,43 @@ export const DAILY_STANDINGS = {
       { team: "Kings", w: 0, l: 1 },
       { team: "Suns", w: 0, l: 1 }
     ]
+  },
+
+  "2026-10-23": {
+    East: [
+      { team: "Pacers", w: 1, l: 0 },
+      { team: "Raptors", w: 1, l: 0 },
+      { team: "Wizards", w: 1, l: 0 },
+      { team: "Pistons", w: 1, l: 0 },
+      { team: "Hawks", w: 1, l: 0 },
+      { team: "Hornets", w: 1, l: 0 },
+      { team: "76ers", w: 2, l: 0 },
+      { team: "Celtics", w: 0, l: 1 },
+      { team: "Cavaliers", w: 0, l: 1 },
+      { team: "Nets", w: 0, l: 1 },
+      { team: "Knicks", w: 0, l: 1 },
+      { team: "Magic", w: 0, l: 1 },
+      { team: "Bucks", w: 0, l: 1 },
+      { team: "Heat", w: 0, l: 1 },
+      { team: "Bulls", w: 0, l: 1 }
+    ],
+    West: [
+      { team: "Timberwolves", w: 1, l: 0 },
+      { team: "Trail Blazers", w: 1, l: 0 },
+      { team: "Clippers", w: 1, l: 0 },
+      { team: "Lakers", w: 1, l: 0 },
+      { team: "Grizzlies", w: 1, l: 0 },
+      { team: "Rockets", w: 1, l: 0 },
+      { team: "Thunder", w: 2, l: 0 },
+      { team: "Pelicans", w: 0, l: 1 },
+      { team: "Nuggets", w: 0, l: 1 },
+      { team: "Spurs", w: 0, l: 1 },
+      { team: "Mavericks", w: 0, l: 1 },
+      { team: "Jazz", w: 0, l: 1 },
+      { team: "Warriors", w: 0, l: 1 },
+      { team: "Kings", w: 0, l: 1 },
+      { team: "Suns", w: 0, l: 1 }
+    ]
   }
 };
 
