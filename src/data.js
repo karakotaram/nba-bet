@@ -51,40 +51,43 @@ export const KEEPER_RULES = [
   "Forfeit your pick two rounds earlier if you keep last year's keeper."
 ];
 
-// Vegas Projected Win Totals (2026-27 Consensus)
-// UPDATE THESE MANUALLY: median line across BetMGM, Betfanatics, Boyd's Bets
-// Last updated: Oct 21, 2026
+// Vegas Projected Win Totals (2026-27, in-season adjusted lines)
+// Median line across the sportsbooks on vegasinsider.com/nba/odds/win-totals/
+// (bet365, BetMGM, DraftKings, Caesars, FanDuel, Hard Rock). Refreshed on the
+// 1st and 15th of each month by a scheduled Claude Code routine
+// ("NBA Bet: refresh Vegas win totals" at claude.ai/code/routines).
+// Last updated: Nov 9, 2026
 export const VEGAS_PROJECTIONS = {
-  "thunder": 62.5,
   "spurs": 59.5,
-  "knicks": 52.5,
-  "celtics": 51.5,
-  "76ers": 50.5,
-  "nuggets": 49.5,
-  "pistons": 49.5,
-  "cavaliers": 48.5,
-  "rockets": 48.5,
+  "celtics": 55.5,
+  "thunder": 55.5,
+  "rockets": 54.5,
+  "76ers": 53.5,
+  "knicks": 51.5,
+  "pistons": 51.5,
+  "lakers": 50.5,
+  "nuggets": 48.5,
   "timberwolves": 48.5,
-  "lakers": 46.5,
-  "heat": 46.5,
-  "raptors": 46.5,
-  "pacers": 44.5,
+  "trail blazers": 48.5,
+  "cavaliers": 47.5,
+  "raptors": 47.5,
+  "warriors": 44.5,
   "hawks": 43.5,
-  "magic": 43.5,
-  "trail blazers": 41.5,
-  "suns": 40.5,
-  "hornets": 38.5,
-  "jazz": 37.5,
-  "warriors": 36.5,
-  "mavericks": 34.5,
-  "wizards": 34.5,
-  "bulls": 29.5,
-  "grizzlies": 29.5,
+  "heat": 42.5,
+  "pacers": 40.5,
+  "magic": 39.5,
+  "grizzlies": 38.5,
+  "mavericks": 37.5,
+  "suns": 36.5,
+  "hornets": 34.5,
+  "wizards": 31.5,
   "pelicans": 28.5,
-  "clippers": 27.5,
-  "bucks": 25.5,
-  "nets": 24.5,
-  "kings": 20.5
+  "clippers": 26.5,
+  "jazz": 26.5,
+  "bulls": 24.5,
+  "nets": 23.5,
+  "bucks": 21.5,
+  "kings": 18.5
 };
 
 // Historic Weekly Standings - 2025-26 Season

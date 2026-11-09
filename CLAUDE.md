@@ -19,7 +19,7 @@ npm test           # Run tests with Jest
 
 ### Data Flow
 1. **Live standings**: `api.js` fetches from ESPN API (`site.api.espn.com/apis/v2/sports/basketball/nba/standings`), cached 1 hour in localStorage
-2. **Vegas projections**: Manual updates in `VEGAS_PROJECTIONS` object in `data.js`
+2. **Vegas projections**: `VEGAS_PROJECTIONS` in `data.js`, refreshed on the 1st and 15th by a scheduled Claude Code routine (see "Vegas Odds" below)
 3. **Historic tracking**: Daily standings appended to `historicStandings.js` by a GitHub Actions cron (`scripts/update-standings.mjs`), which also triggers the Pages deploy. When the playoffs start it freezes the final regular-season standings (`REGULAR_SEASON_END_DATE`; the app then stops using live standings) and disables itself. Past seasons are archived as `historicStandings<YEAR>.js`
 
 ### Key Files
@@ -49,8 +49,8 @@ The scoring logic in `src/scoring.js` calculates points per team:
 
 ## Updating Data
 
-### Vegas Odds (periodic)
-Update `VEGAS_PROJECTIONS` in `src/data.js` with current win totals. Use lowercase team names matching the existing keys (e.g., "thunder", "trail blazers", "76ers").
+### Vegas Odds (every two weeks, automated)
+`VEGAS_PROJECTIONS` in `src/data.js` holds the median in-season win total across the books on vegasinsider.com/nba/odds/win-totals/. A Claude Code cloud routine ("NBA Bet: refresh Vegas win totals", claude.ai/code/routines) runs at 9am ET on the 1st and 15th of each month. It updates the values and the "Last updated" line, then pushes to main, which triggers the Pages deploy. Outside the regular season (mid-April to mid-October) it does nothing. To update by hand, use the same source and lowercase keys matching the existing ones (e.g., "thunder", "trail blazers", "76ers").
 
 ### Historic Standings
 Add new entries to `DAILY_STANDINGS` in `src/historicStandings.js` with format:
